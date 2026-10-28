@@ -131,3 +131,18 @@ test('shape links and heart sprite exports preserve the selected geometry',async
   await page.locator('#shape').selectOption('pear');await expect(page).toHaveURL(/shape=pear/);
   await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
+
+test('hand-drawn style and new-stone variations survive recipe round trips',async({page})=>{
+  await ready(page);
+  const snapshot=()=>page.locator('#gem').evaluate(e=>{
+    const a=e.asset;const png=a.exportPNG({scale:1});return{image:png.toDataURL(),config:a.getConfig(),error:a.gl.getError()};
+  });
+  const first=await snapshot();expect(first.config.craft).toBe(.75);
+  await page.locator('#new-gem').click();
+  const next=await snapshot();expect(next.config.seed).toBe(first.config.seed+1);expect(next.image).not.toBe(first.image);
+  await page.locator('[data-craft="0"]').click();
+  const regular=await snapshot();expect(regular.config.craft).toBe(0);expect(regular.image).not.toBe(next.image);
+  await page.locator('#import-file').setInputFiles({name:'painted.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(next.config))});
+  const restored=await snapshot();expect(restored.image).toBe(next.image);expect(restored.error).toBe(0);
+  await expect(page.locator('[data-craft="0.75"]')).toHaveAttribute('aria-pressed','true');
+});

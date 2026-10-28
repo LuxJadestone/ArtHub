@@ -51,6 +51,26 @@ test('shape recipes preserve material changes and old recipes default to round',
   assert.deepEqual(validateConfig(JSON.parse(JSON.stringify(config))),config);
 });
 
+test('hand-cut geometry is reproducible, seeded and valid across shape families',()=>{
+  for(const shape of Object.keys(SHAPES)) {
+    const first=createShapeGeometry('brilliant',shape,.75,7);
+    const repeated=createShapeGeometry('brilliant',shape,.75,7);
+    const next=createShapeGeometry('brilliant',shape,.75,8);
+    assert.deepEqual(first.triangles,repeated.triangles);
+    assert.notDeepEqual(first.triangles,next.triangles);
+    assert.ok(first.planes.length/4<=64);
+    assert.ok(first.triangles.length/9<=128);
+    const regular=createShapeGeometry('brilliant',shape,0,7);
+    assert.notDeepEqual(first.triangles,regular.triangles);
+  }
+  for(const seed of [0,1,9999])for(const cut of ['brilliant','emerald','cushion']){
+    const {planes,triangles}=createShapeGeometry(cut,'round',.75,seed);
+    for(let i=0;i<triangles.length;i+=3)for(let p=0;p<planes.length;p+=4)
+      assert.ok(triangles[i]*planes[p]+triangles[i+1]*planes[p+1]+triangles[i+2]*planes[p+2]<=planes[p+3]+1e-5);
+  }
+  assert.throws(()=>validateConfig({craft:2}));
+});
+
 test('unknown properties are discarded and caller objects remain unchanged', () => {
   const input = JSON.parse('{"__proto__":{"polluted":true},"speed":0,"extra":"ignored"}');
   const result = validateConfig(input);

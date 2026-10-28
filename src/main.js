@@ -21,6 +21,7 @@ document.querySelector('#app').innerHTML = `
   </div>
   <aside class="inspector" aria-label="资产参数">
    <div class="inspector-heading"><div><p class="eyebrow">THE MATERIAL</p><h2>雕琢你的光</h2></div><button id="reset" class="text-button">重置参数 ↺</button></div>
+   <div class="craft-controls"><div class="craft-heading"><span>切面性格</span><button id="new-gem" class="text-button">换一颗 ↻</button></div><div class="craft-choices" role="group" aria-label="切面性格"><button data-craft="0.75" aria-pressed="true">手绘感<small>错落切面 · 柔和彩光</small></button><button data-craft="0" aria-pressed="false">规整感<small>对称切工 · 清晰线条</small></button></div><p>每一颗的切面，都有自己的节奏。</p></div>
    <fieldset><legend><span>01</span> 形态与颜色</legend><label class="select-label" for="shape">形状 <select id="shape" data-param="shape">${Object.entries(SHAPES).map(([id,s])=>`<option value="${id}">${s.name} · ${s.english}</option>`).join('')}</select></label><label class="select-label cut-label" for="cut">切工 <select id="cut" data-param="cut"><option value="brilliant">明亮式 · Brilliant</option><option value="emerald">阶梯式 · Emerald</option><option value="cushion">枕形式 · Cushion</option></select></label><label class="color-label" for="color"><span>晶体颜色</span><span class="color-value"><output id="color-value">#EF3158</output><input type="color" id="color" data-param="color" value="#ef3158" aria-label="晶体颜色"></span></label></fieldset>
    <fieldset><legend><span>02</span> 光在其中</legend>
     ${slider('ior', '折射率', 1.05, 2.6, 0.01, 1.77, '光线进入晶体时的弯折程度')}
@@ -29,7 +30,7 @@ document.querySelector('#app').innerHTML = `
     ${slider('bounces', '内部反射', 1, 8, 1, 6, '更多次反射会增加渲染开销')}
    </fieldset>
    <fieldset><legend><span>03</span> 像素与节奏</legend>
-    ${slider('pixels', '像素精度', 96, 480, 16, 240, '较低精度呈现更粗粝的像素边缘')}
+    ${slider('pixels', '像素精度', 96, 480, 16, 192, '较低精度呈现更粗粝的像素边缘')}
     ${slider('speed', '旋转速度', 0, 1.5, 0.05, 0.45, '拖动画面可额外调整角度')}
     ${slider('exposure', '光照强度', 0.4, 2.5, 0.05, 1.25, '调整虚拟摄影棚的明亮程度')}
     <div class="switch-row"><label for="outlines">切面描边</label><input type="checkbox" role="switch" id="outlines" data-param="outlines" checked></div><div class="switch-row"><label for="caustics">彩色焦散 <small>风格化</small></label><input type="checkbox" role="switch" id="caustics" data-param="caustics" checked></div>
@@ -71,6 +72,10 @@ function sync() {
     const selected=button.dataset.shape===config.shape;
     button.classList.toggle('active',selected);button.setAttribute('aria-pressed',String(selected));
   }
+  for(const button of document.querySelectorAll('[data-craft]')){
+    const selected=(Number(button.dataset.craft)>0)===(config.craft>0);
+    button.setAttribute('aria-pressed',String(selected));
+  }
   for (const button of document.querySelectorAll('[data-preset]')) {
     const selected = button.dataset.preset === config.preset;
     button.classList.toggle('active', selected); button.setAttribute('aria-pressed', String(selected));
@@ -107,6 +112,12 @@ function changeShape(shape) {
 }
 function updateShapeLink(){const url=new URL(location.href);url.searchParams.set('shape',gem.config.shape);history.replaceState(null,'',url);}
 document.querySelectorAll('[data-shape]').forEach(button=>button.addEventListener('click',()=>changeShape(button.dataset.shape)));
+document.querySelectorAll('[data-craft]').forEach(button=>button.addEventListener('click',()=>{gem.asset?.setConfig({craft:Number(button.dataset.craft)});sync();}));
+document.querySelector('#new-gem').addEventListener('click',()=>{
+  if(!gem.asset)return;
+  gem.asset.setConfig({craft:gem.config.craft||.75,seed:(gem.config.seed+1)%10000});sync();
+  message('新的切面已生成，导出配方即可留住这一颗');
+});
 document.querySelector('#shape-front').addEventListener('click',()=>{
   if(!gem.asset)return;
   if(playing)togglePlay();

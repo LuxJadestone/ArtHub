@@ -43,7 +43,7 @@ export class GemAsset {
     gl.deleteShader(vs); gl.deleteShader(fs);
     if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(this.program));
     this.uniforms = new Map();
-    const names = ['Resolution', 'PlaneCount', 'Bounces', 'Seed', 'Time', 'Yaw', 'Tilt', 'Ior', 'Dispersion', 'Absorption', 'Exposure', 'Color', 'Background', 'Outlines', 'Caustics', 'Transparent', 'Mesh', 'TriangleCount', 'TriangleTexture'];
+    const names = ['Resolution', 'PlaneCount', 'Bounces', 'Seed', 'Time', 'Yaw', 'Tilt', 'Ior', 'Dispersion', 'Absorption', 'Exposure', 'Color', 'Background', 'Outlines', 'Caustics', 'Transparent', 'Mesh', 'TriangleCount', 'TriangleTexture', 'Craft'];
     for (const name of names) this.uniforms.set(name, gl.getUniformLocation(this.program, `u${name}`));
     this.uniforms.set('Planes', gl.getUniformLocation(this.program, 'uPlanes[0]'));
     this.vao = gl.createVertexArray();
@@ -86,9 +86,9 @@ export class GemAsset {
     const f = (key, value) => gl.uniform1f(this.uniforms.get(key), value);
     const i = (key, value) => gl.uniform1i(this.uniforms.get(key), value);
     gl.uniform2f(this.uniforms.get('Resolution'), width, height);
-    const key = `${c.cut}:${c.shape}`;
+    const key = `${c.cut}:${c.shape}:${c.craft}:${c.seed}`;
     if (key !== this.geometryKey) {
-      this.geometry = createShapeGeometry(c.cut,c.shape); this.geometryKey = key;
+      this.geometry = createShapeGeometry(c.cut,c.shape,c.craft,c.seed); this.geometryKey = key;
       const triangles = this.geometry.triangles;
       const data = new Float32Array(Math.max(3,triangles.length/3)*4);
       for(let n=0;n<triangles.length/3;n++) data.set(triangles.subarray(n*3,n*3+3),n*4);
@@ -104,6 +104,7 @@ export class GemAsset {
     i('PlaneCount', planes.length / 4); i('Bounces', c.bounces); i('Seed', c.seed);
     f('Time', time); f('Yaw', yaw); f('Tilt', c.tilt); f('Ior', c.ior);
     f('Dispersion', c.dispersion); f('Absorption', c.absorption); f('Exposure', c.exposure);
+    f('Craft',c.craft);
     gl.uniform3fv(this.uniforms.get('Color'), rgb(c.color));
     gl.uniform3fv(this.uniforms.get('Background'), rgb(c.background));
     i('Outlines', Number(c.outlines)); i('Caustics', Number(c.caustics)); i('Transparent', Number(transparent));

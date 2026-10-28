@@ -15,7 +15,7 @@ uniform sampler2D uTriangleTexture;
 uniform int uTriangleCount;
 uniform bool uMesh;
 uniform int uPlaneCount, uBounces, uSeed;
-uniform float uTime, uYaw, uTilt, uIor, uDispersion, uAbsorption, uExposure;
+uniform float uTime, uYaw, uTilt, uIor, uDispersion, uAbsorption, uExposure, uCraft;
 uniform vec3 uColor, uBackground;
 uniform bool uOutlines, uCaustics, uTransparent;
 
@@ -60,12 +60,48 @@ bool intersectGem(vec3 ro,vec3 rd,out float nearT,out float farT,out vec3 nearN,
 
 vec3 environment(vec3 d){
  // Large studio softboxes, a dark floor and narrower coloured strip lights.
- vec3 c=mix(vec3(.018,.025,.045),vec3(.28,.34,.45),smoothstep(-.4,.8,d.y));
+ vec3 c=mix(vec3(.045,.035,.065),vec3(.28,.34,.45),smoothstep(-.4,.8,d.y));
  float panel=step(.34,d.y)*step(abs(d.x+.22),.38)*step(d.z,.78);
  float strip=step(.73,d.x)*step(abs(d.y-.10),.27);
  float warm=step(.66,-d.z)*step(abs(d.x-.08),.48)*step(-.3,d.y);
  c+=vec3(3.8,3.4,2.6)*panel+vec3(1.6,2.4,3.)*strip+vec3(2.6,1.9,1.3)*warm;
+ c+=vec3(1.8,.75,.38)*step(.52,-d.x)*step(d.y,-.12)*step(-.74,d.y);
+ c+=vec3(.55,.38,1.3)*step(.50,d.z)*step(.12,d.x)*step(d.x,.55);
  return c;
+}
+
+vec3 hsv(vec3 c){
+ vec3 p=abs(fract(c.xxx+vec3(0.,2./3.,1./3.))*6.-3.);
+ return c.z*mix(vec3(1.),clamp(p-1.,0.,1.),c.y);
+}
+float hueOf(vec3 c){
+ float hi=max(c.r,max(c.g,c.b)),lo=min(c.r,min(c.g,c.b)),delta=hi-lo;
+ if(delta<.0001)return .56;
+ float h=hi==c.r?(c.g-c.b)/delta:hi==c.g?2.+(c.b-c.r)/delta:4.+(c.r-c.g)/delta;
+ return fract(h/6.+1.);
+}
+vec3 paintedColor(vec3 light,vec3 normal){
+ float h=hueOf(uColor);
+ float maximum=max(uColor.r,max(uColor.g,uColor.b)),minimum=min(uColor.r,min(uColor.g,uColor.b));
+ float saturation=smoothstep(.06,.45,(maximum-minimum)/max(maximum,.001));
+ float value=.35+.65*sqrt(maximum);
+ float highlightHue=(h>.83||h<.12)?h+.07:h-.09;
+ float energy=dot(light,vec3(.38,.40,.22));
+ float variation=fract(sin(dot(normal,vec3(12.7,63.1,27.4)))*437.585)-.5;
+ float tone=clamp(1.-exp(-energy*uExposure*1.65)+variation*.045,0.,1.);
+ tone=floor(tone*8.+.5)/8.;
+ vec3 shadow=mix(hsv(vec3(fract(h-.055),.77*saturation,.28)),vec3(.19,.10,.23),.22);
+ vec3 middle=hsv(vec3(h,.86*saturation,.78*value));
+ vec3 body=hsv(vec3(h,.80*saturation,value));
+ vec3 bounce=hsv(vec3(fract(highlightHue),.57*saturation,1.));
+ vec3 highlight=mix(hsv(vec3(fract(highlightHue),.16*saturation,1.)),vec3(1.,.97,.83),.45);
+ vec3 p=mix(shadow,middle,smoothstep(0.,.38,tone));
+ p=mix(p,body,smoothstep(.28,.62,tone));
+ p=mix(p,bounce,smoothstep(.55,.82,tone));
+ p=mix(p,highlight,smoothstep(.79,1.,tone));
+ // Small reflected accent colours, within the material's colour family.
+ float accent=clamp((light.b-light.r*.55)*.45,0.,.28);
+ return mix(p,hsv(vec3(fract(h+.16),.38*saturation,.87)),accent);
 }
 
 float fresnel(float cosine,float ior){float f=(ior-1.)/(ior+1.);f*=f;return f+(1.-f)*pow(1.-clamp(cosine,0.,1.),5.);}
@@ -111,11 +147,14 @@ vec3 shade(vec3 ro,vec3 rd,mat3 world,float nearT,vec3 normal){
    edge=min(edge,uPlanes[i].w-dot(uPlanes[i].xyz,hit));
   }
   float line=1.-step(.009,edge);
-  color=mix(color,mix(uColor,vec3(1.,.97,.82),.7),line*.50);
+  float facing=step(.32,dot(world*normal,normalize(vec3(-.6,.8,1.))));
+  float strength=mix(.50,.12*facing,uCraft);
+  color=mix(color,mix(uColor,vec3(1.,.97,.82),.7),line*strength);
  }
- color=vec3(1.)-exp(-color*uExposure*1.6);
- color=pow(color,vec3(.88));
- return floor(color*9.+.5)/9.;
+ vec3 painted=paintedColor(color,normal);
+ color=pow(vec3(1.)-exp(-color*uExposure*1.6),vec3(.88));
+ vec3 precise=floor(color*9.+.5)/9.;
+ return floor(mix(precise,painted,min(.86,uCraft*1.14))*31.+.5)/31.;
 }
 
 void main(){
@@ -129,9 +168,17 @@ void main(){
    float angle=atan(q.y,q.x),r=length(q);
    float wave=.75+.13*sin(angle*3.+uTime*1.8+float(uSeed));
    if(r<wave){
-    vec3 c=mix(uColor,vec3(.78,.47,1.),step(.35,q.x)*.55);
-    if(r<.49+.13*sin(angle*2.-uTime))c=mix(uColor,vec3(1.,.89,.42),.75);
-    if(length(q+vec2(.12*sin(uTime),.02))<.27)c=vec3(1.,.98,.82);
+    float motion=uTime*.7;
+    vec2 centers[4]=vec2[4](vec2(-.35,.1),vec2(.29,-.25),vec2(.11,.32),vec2(-.12,-.3));
+    float best=10.;int cell=0;
+    for(int j=0;j<4;j++){
+     vec2 site=centers[j]+.10*vec2(sin(motion+float(j)*2.1),cos(motion*.8+float(j)));
+     float dist=length((q-site)*vec2(1.,1.2));if(dist<best){best=dist;cell=j;}
+    }
+    vec3 c=mix(uColor,vec3(.78,.47,1.),.35);
+    if(cell==1)c=mix(uColor,vec3(1.,.89,.42),.65);
+    if(cell==2)c=mix(uColor,vec3(.46,.96,.91),.55);
+    if(cell==3)c=vec3(1.,.98,.82);
     background=mix(background,c,.85);
    }
   }

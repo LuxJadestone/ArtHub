@@ -19,12 +19,14 @@ export const SHAPES = Object.freeze({
 export const DEFAULT_CONFIG = Object.freeze({
   version: 1, preset: 'ruby', color: PRESETS.ruby.color, cut: 'brilliant',
   shape: 'round',
+  craft: 0.75,
   ior: 1.77, dispersion: 0.035, absorption: 1.15, bounces: 6,
-  pixels: 240, speed: 0.45, exposure: 1.25, tilt: 0.32,
+  pixels: 192, speed: 0.45, exposure: 1.25, tilt: 0.32,
   outlines: true, caustics: true, background: '#dedbd5', seed: 7,
 });
 
 const ranges = {
+  craft: [0, 1],
   ior: [1.05, 2.6], dispersion: [0, 0.12], absorption: [0, 3],
   bounces: [1, 8], pixels: [96, 480], speed: [0, 1.5], exposure: [0.4, 2.5],
   tilt: [-0.8, 0.8], seed: [0, 9999],
