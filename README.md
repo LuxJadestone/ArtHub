@@ -4,7 +4,9 @@
 
 ## GEM LAB：实时像素宝石
 
-在线站点：**https://luxjadestone.github.io/ArtHub/**。推送到 `main` 后，`.github/workflows/pages.yml` 自动运行测试、构建并部署到 GitHub Pages；URL 保持不变。部署进度和错误可在仓库的 Actions 页面查看。
+部署地址（启用 GitHub Pages 后生效）：**https://luxjadestone.github.io/ArtHub/**。推送到 `main` 后，`.github/workflows/pages.yml` 自动运行测试、构建并部署到 GitHub Pages；URL 保持不变。部署进度和错误可在仓库的 Actions 页面查看。
+
+首次启用：进入仓库 **Settings → Pages → Build and deployment → Source**，选择 **GitHub Actions**。创建 Pages 站点需要管理权限；当前云端 GitHub 集成的 Pages 创建操作返回 403，需要仓库拥有者在设置中启用。启用后重新运行部署 workflow，或者推送下一次代码更新。不要将 `node_modules`、视频参考或整个源码目录作为静态网站上传；workflow 只部署构建后的 `dist/`。
 
 Pages 构建设置 `BASE_PATH=/ArtHub/`，本地开发默认根路径。独立组件示例部署在 `/ArtHub/examples/embed.html`；可复用模块部署在 `/ArtHub/asset/gem-lab.js`。发布产物仅含 `dist/`，不包含下载的视频、开发依赖或本地证据文件。
 
