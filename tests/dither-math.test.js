@@ -33,3 +33,9 @@ test('PNG stack unpacking preserves bottom-up slice and row order',()=>{
   assert.equal(bytes[15*64*64+63*64],0);
   assert.throws(()=>unpackPatternStack({width:32,height:32,data}));
 });
+
+test('minor UV frequency remains measurable under extreme anisotropy',()=>{
+  const [major,minor]=singularFrequencies([10000,0],[0,.001]);
+  assert.ok(Math.abs(major-10000)<1e-6);
+  assert.ok(Math.abs(minor-.001)<1e-9);
+});

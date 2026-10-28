@@ -42,7 +42,7 @@ void main(){
     this.resolveUniform=gl.getUniformLocation(this.resolveProgram,'uSceneColor');
     this.sceneFramebuffer=gl.createFramebuffer();this.sceneColor=gl.createTexture();this.sceneSize=[0,0];
     this.vao=gl.createVertexArray();
-    this.uniforms={};for(const name of ['Resolution','Mode','Scene','Scale','Fov','Variability','Contrast','Stretch','Exposure','Offset','Distance','Yaw','Pitch','ObjectAngle','Quantize','Inverse','Radial','Pattern','Ramp'])this.uniforms[name]=gl.getUniformLocation(this.program,'u'+name);
+    this.uniforms={};for(const name of ['Resolution','PixelFootprint','Mode','Scene','Scale','Fov','Variability','Contrast','Stretch','Exposure','Offset','Distance','Yaw','Pitch','ObjectAngle','Quantize','Inverse','Radial','Pattern','Ramp'])this.uniforms[name]=gl.getUniformLocation(this.program,'u'+name);
     const {bytes,size,layers}=unpackPatternStack(pattern);
     this.patternData=bytes;this.patternSize=size;this.patternLayers=layers;
     gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
@@ -81,6 +81,7 @@ void main(){
     gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_3D,this.patternTexture);gl.uniform1i(u.Pattern,0);
     gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,this.rampTexture);gl.uniform1i(u.Ramp,1);
     gl.uniform2f(u.Resolution,width,height);
+    gl.uniform1f(u.PixelFootprint,samples*(this.displayScale||1));
     for(const [uniform,key]of [['Variability','variability'],['Contrast','contrast'],['Stretch','stretch'],['Exposure','exposure'],['Offset','offset'],['Distance','distance'],['Pitch','pitch']])gl.uniform1f(u[uniform],c[key]);
     gl.uniform1f(u.Scale,resolutionAdjustedScale(c.scale,height,c.referenceHeight));
     gl.uniform1f(u.Fov,2*Math.tan(c.fov*Math.PI/360));

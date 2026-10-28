@@ -125,3 +125,22 @@ test('native pixels track DPR, resize and fullscreen; supersampling resolves to 
   await page.locator('#fullscreen').click();await expect.poll(()=>page.evaluate(()=>!!document.fullscreenElement)).toBe(false);
   await context.close();
 });
+
+test('unresolved periodic dots converge to mean tone rather than a sampled beat',async({page})=>{
+  await ready(page);
+  const results=await page.locator('#surface-canvas').evaluate(c=>{
+    const r=c.renderer;r.setConfig({mode:0,scene:1,animation:'off',distance:3.2,yaw:0,pitch:0,scale:5,referenceHeight:1080,fov:60,variability:1,contrast:3,stretch:0,exposure:.55,radial:false,samples:1});
+    const measure=displayScale=>{
+      r.displayScale=displayScale;r.render();const pixels=new Uint8Array(200*120*4),gl=r.gl;
+      gl.readPixels(260,180,200,120,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
+      let sum=0,squares=0;for(let i=0;i<pixels.length;i+=4){sum+=pixels[i];squares+=pixels[i]**2;}
+      const mean=sum/(200*120);return {mean,variance:squares/(200*120)-mean**2,error:gl.getError()};
+    };
+    // Tiny display footprint bypasses the low-pass to reproduce the old path.
+    const unfiltered=measure(1e-6),filtered=measure(1);return {unfiltered,filtered};
+  });
+  expect(results.unfiltered.variance).toBeGreaterThan(5);
+  expect(results.filtered.variance).toBeLessThan(.1);
+  expect(results.filtered.error).toBe(0);
+  expect(results.filtered.mean).toBeGreaterThan(40);expect(results.filtered.mean).toBeLessThan(220);
+});

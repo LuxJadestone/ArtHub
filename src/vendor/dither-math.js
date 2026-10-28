@@ -5,7 +5,8 @@
  */
 export function singularFrequencies(dx,dy){
   const q=dx[0]**2+dx[1]**2+dy[0]**2+dy[1]**2,r=dx[0]*dy[1]-dx[1]*dy[0],d=Math.sqrt(Math.max(0,q*q-4*r*r));
-  return [Math.sqrt(Math.max(1e-12,(q+d)/2)),Math.sqrt(Math.max(1e-12,(q-d)/2))];
+  const largest=Math.sqrt(Math.max(1e-12,(q+d)/2));
+  return [largest,Math.max(1e-6,Math.abs(r)/largest)];
 }
 
 // Dither3DGlobalProperties.cs: normalized to the authored reference resolution.

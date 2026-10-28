@@ -12,7 +12,7 @@ const controls=[
 document.querySelector('#app').innerHTML=`
 <header class="directory-header"><a class="directory-brand" href="../"><span class="directory-mark">▦</span> ArtHub <span>/ 技术目录</span></a><a href="../">← 目录</a></header>
 <main class="tool-main"><section class="tool-title"><div><span class="directory-code">02 / 抖动渲染</span><h1>表面稳定分形抖动</h1></div><span>WEBGL 2</span></section>
-<section class="tool-layout"><div><div class="raster-stage dither-stage"><div class="raster-toolbar"><span id="mode-name">Surface-Stable Fractal Dithering</span><span id="preview-resolution">${previewSize().join(' × ')}</span></div><canvas id="surface-canvas" width="${previewSize()[0]}" height="${previewSize()[1]}" aria-label="表面稳定分形抖动预览"></canvas><div class="scene-controls"><span>拖动：旋转 / 滚轮：距离</span><button id="fullscreen">全屏</button><button id="camera-reset">重置相机</button></div></div><div class="tool-meta"><span>UV / SVD / LOD</span><span>64 × 64 × 16</span><a href="https://github.com/runevision/Dither3D" target="_blank" rel="noreferrer">Dither3D ↗</a></div><div class="dither-error" id="error" role="alert" hidden></div></div>
+<section class="tool-layout"><div><div class="raster-stage dither-stage"><div class="raster-toolbar"><span id="mode-name">Surface-Stable Fractal Dithering</span><span id="preview-resolution">${previewSize().join(' × ')}</span></div><canvas id="surface-canvas" width="${previewSize()[0]}" height="${previewSize()[1]}" aria-label="表面稳定分形抖动预览"></canvas><div class="scene-controls"><span>拖动：旋转 / 滚轮：距离</span><button id="fullscreen">全屏</button><button id="copy-config">复制参数</button><button id="camera-reset">重置相机</button></div></div><div class="tool-meta"><span>UV / SVD / LOD</span><span>64 × 64 × 16</span><a href="https://github.com/runevision/Dither3D" target="_blank" rel="noreferrer">Dither3D ↗</a></div><div class="dither-error" id="error" role="alert" hidden></div></div>
 <aside class="raster-params" aria-label="参数"><h2>参数</h2><label class="parameter" for="preset"><span>预设</span><select id="preset" disabled><option value="legacy">原演示</option><option value="reference">参考校准</option></select></label><label class="parameter" for="resolution"><span>分辨率</span><select id="resolution"><option value="native">自动 / DPR</option><option value="720">720 × 480</option><option value="960">960 × 540</option><option value="1920">1920 × 1080</option></select></label><label class="parameter" for="samples"><span>像素采样<output id="samples-used"></output></span><select id="samples"><option value="1">1 × 1</option><option value="2">2 × 2</option></select></label><div class="preset-resolution">基准高度 <output id="reference-height">1080</output> px</div><label class="parameter" for="mode"><span>模式</span><select id="mode"><option value="0">表面稳定分形</option><option value="1">屏幕 Bayer</option><option value="2">固定表面</option></select></label>${controls.map(([key,label,min,max,step])=>`<label class="parameter" for="${key}"><span>${label}<output id="${key}-value">${defaults[key]}</output></span><input type="range" id="${key}" data-key="${key}" min="${min}" max="${max}" step="${step}" value="${defaults[key]}"></label>`).join('')}
 <label class="parameter" for="scene"><span>场景</span><select id="scene"><option value="0">参考几何体</option><option value="1">平面</option><option value="2">墙面场景</option></select></label>
 <label class="parameter" for="animation"><span>动画</span><select id="animation"><option value="camera">镜头</option><option value="object">物体</option><option value="off">关闭</option></select></label>
@@ -26,7 +26,8 @@ function fitCanvas(){
   canvas.style.aspectRatio=String(aspect);canvas.closest('.dither-stage').style.setProperty('--dither-aspect',aspect);
   const width=resolution==='native'?Math.max(1,Math.round(canvas.getBoundingClientRect().width*devicePixelRatio)):Number(resolution);
   const height=Math.max(1,Math.round(width/aspect));
-  if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;renderer?.render();}
+  if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;}
+  if(renderer){renderer.displayScale=Math.max(1,width/Math.max(1,canvas.getBoundingClientRect().width*devicePixelRatio));renderer.render();}
   document.querySelector('#samples-used').value=renderer?`${renderer.samplesUsed} × ${renderer.samplesUsed}`:'';
   document.querySelector('#preview-resolution').textContent=`${width} × ${height} / DPR ${devicePixelRatio}`;
 }
@@ -34,6 +35,12 @@ const resizeObserver=new ResizeObserver(fitCanvas);resizeObserver.observe(canvas
 addEventListener('resize',fitCanvas);
 document.querySelector('#resolution').addEventListener('change',e=>{resolution=e.target.value;fitCanvas();});
 document.querySelector('#samples').addEventListener('change',e=>change({samples:Number(e.target.value)}));
+document.querySelector('#copy-config').addEventListener('click',async()=>{
+  if(!renderer)return;
+  const data={config:renderer.config,resolution,canvas:[canvas.width,canvas.height],displayWidth:canvas.getBoundingClientRect().width,dpr:devicePixelRatio,samples:renderer.samplesUsed,browser:navigator.userAgent};
+  try{await navigator.clipboard.writeText(JSON.stringify(data,null,2));document.querySelector('#status').value='参数已复制';}
+  catch{document.querySelector('#status').value='复制失败';}
+});
 document.querySelector('#fullscreen').addEventListener('click',async()=>{
   const stage=document.querySelector('.dither-stage'),button=document.querySelector('#fullscreen');button.disabled=true;
   try{if(document.fullscreenElement)await document.exitFullscreen();else await stage.requestFullscreen();}
@@ -76,7 +83,7 @@ canvas.addEventListener('pointerup',()=>{drag=undefined;});canvas.addEventListen
 canvas.addEventListener('wheel',e=>{if(!renderer)return;e.preventDefault();change({distance:Math.max(3,Math.min(14,renderer.config.distance+e.deltaY*.008))});},{passive:false});
 document.querySelector('#export').addEventListener('click',()=>{if(!renderer)return;renderer.render();canvas.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='surface-stable-dither.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);document.querySelector('#status').value=`PNG / ${canvas.width} × ${canvas.height}`;},'image/png');});
 SurfaceDither.create(canvas,defaults).then(result=>{
-  renderer=result;canvas.renderer=result;
+  renderer=result;canvas.renderer=result;fitCanvas();
   if(matchMedia('(prefers-reduced-motion: reduce)').matches)renderer.setConfig({animation:'off'});
   sync();document.querySelector('#preset').disabled=false;document.querySelector('#export').disabled=false;document.querySelector('#reset').disabled=false;document.querySelector('#status').value='64 × 64 × 16';
 }).catch(error=>{const box=document.querySelector('#error');box.hidden=false;box.textContent=error.message;document.querySelector('#status').value='渲染失败';});

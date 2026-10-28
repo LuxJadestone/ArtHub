@@ -121,8 +121,8 @@ void main(){
  }
  brightness=clamp(brightness*uExposure+uOffset,.001,.999);
  float bw;
- if(uMode==1){float inputValue=uInverse?1.-brightness:brightness;bw=step(bayer(gl_FragCoord.xy/exp2(uScale-6.)),inputValue);if(uInverse)bw=1.-bw;}
- else if(uMode==2){float p=texture(uPattern,vec3(uv*exp2(8.-uScale),15.5/16.)).r;float inputValue=uInverse?1.-brightness:brightness;bw=smoothstep(1.-inputValue-.035,1.-inputValue+.035,p);if(uInverse)bw=1.-bw;}
+ if(uMode==1){float inputValue=uInverse?1.-brightness:brightness;bw=step(bayer(gl_FragCoord.xy/max(1.,exp2(uScale-6.))),inputValue);if(uInverse)bw=1.-bw;}
+ else if(uMode==2){float p=texture(uPattern,vec3(uv*exp2(8.-uScale),15.5/16.)).r;float inputValue=uInverse?1.-brightness:brightness;bw=smoothstep(1.-inputValue-.035,1.-inputValue+.035,p);if(uInverse)bw=1.-bw;float cycles=surfaceFrequencies(dx,dy).x*exp2(8.-uScale)*4.;bw=mix(brightness,bw,patternVisibility(cycles));}
  else bw=surfaceStableDither(uv,dx,dy,brightness);
  vec3 color=uScene==2?mix(vec3(.10,.115,.12),vec3(.96,.95,.89),bw):vec3(mix(.13,1.,bw));
  outputColor=vec4(color,1.);
