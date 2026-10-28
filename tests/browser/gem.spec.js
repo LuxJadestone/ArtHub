@@ -98,3 +98,36 @@ test('reduced-motion preference starts with a still asset', async ({ page }) => 
   expect(await page.locator('#gem').evaluate((e) => e.asset.playing)).toBe(false);
   await expect(page.getByRole('button', { name: '播放动画', exact: true })).toBeVisible();
 });
+
+test('seven shapes have distinct rendered silhouettes, including a genuine heart notch', async ({page})=>{
+  await ready(page);
+  const masks=[];
+  for(const shape of ['round','oval','rectangle','pear','marquise','heart','crystal']){
+    await page.locator(`[data-shape="${shape}"]`).click();
+    await expect(page.locator('#shape')).toHaveValue(shape);
+    const result=await page.locator('#gem').evaluate(e=>{
+      const a=e.asset;a.setPlaying(false);a.time=0;a.yaw=0;a.setConfig({tilt:0});
+      const c=a.exportPNG({scale:1}),ctx=c.getContext('2d');const pixels=ctx.getImageData(0,0,c.width,c.height).data;
+      const mask=[];let count=0;
+      for(let i=3;i<pixels.length;i+=4){mask.push(pixels[i]?1:0);if(pixels[i])count++;}
+      const alpha=(x,y)=>ctx.getImageData(Math.floor(c.width*(.5+x/4.8)),Math.floor(c.height*(.5-(y+.18)/4.8)),1,1).data[3];
+      return{mask:mask.join(''),count,error:a.gl.getError(),notch:alpha(0,.75),lobe:alpha(.55,.80),body:alpha(0,0)};
+    });
+    expect(result.count).toBeGreaterThan(400);expect(result.error).toBe(0);
+    if(shape==='heart'){expect(result.notch).toBe(0);expect(result.lobe).toBe(255);expect(result.body).toBe(255);}
+    masks.push(result.mask);
+  }
+  expect(new Set(masks).size).toBe(7);
+  await page.getByRole('button',{name:'祖母绿 Emerald'}).click();
+  await expect(page.locator('#shape')).toHaveValue('crystal');
+});
+
+test('shape links and heart sprite exports preserve the selected geometry',async({page})=>{
+  await page.goto('/?shape=heart');await page.waitForFunction(()=>document.querySelector('#gem')?.asset);
+  await expect(page.locator('[data-shape="heart"]')).toHaveAttribute('aria-pressed','true');
+  await page.locator('#shape-front').click();
+  const result=await page.locator('#gem').evaluate(e=>{const a=e.asset;a.setConfig({pixels:96,bounces:2});const s=a.exportSpriteSheet({frames:4,columns:2});return{shape:s.metadata.config.shape,alpha:s.canvas.getContext('2d').getImageData(0,0,1,1).data[3],error:a.gl.getError()}});
+  expect(result).toEqual({shape:'heart',alpha:0,error:0});
+  await page.locator('#shape').selectOption('pear');await expect(page).toHaveURL(/shape=pear/);
+  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});

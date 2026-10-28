@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_CONFIG, PRESETS, validateConfig, presetConfig, createCut } from '../src/gem-config.js';
+import { DEFAULT_CONFIG, PRESETS, SHAPES, validateConfig, presetConfig, createCut } from '../src/gem-config.js';
+import { createShapeGeometry } from '../src/gem-shapes.js';
 
 test('all presets produce bounded convex cuts and serializable configurations', () => {
   for (const id of Object.keys(PRESETS)) {
@@ -20,9 +21,34 @@ test('all presets produce bounded convex cuts and serializable configurations', 
 });
 
 test('invalid external values are rejected rather than silently poisoning the shader', () => {
-  for (const input of [null, [], { version: 2 }, { ior: NaN }, { ior: 9 }, { pixels: 200.5 }, { cut: 'other' }, { preset: 'constructor' }, { color: 'red' }, { outlines: 'false' }, { seed: Infinity }]) {
+  for (const input of [null, [], { version: 2 }, { ior: NaN }, { ior: 9 }, { pixels: 200.5 }, { cut: 'other' }, { shape: 'constructor' }, { preset: 'constructor' }, { color: 'red' }, { outlines: 'false' }, { seed: Infinity }]) {
     assert.throws(() => validateConfig(input));
   }
+});
+
+test('all new shapes are closed outward-facing meshes; convex planes contain their vertices', () => {
+  for (const shape of Object.keys(SHAPES)) for(const cut of ['brilliant','emerald','cushion']) {
+    const {planes,triangles,mesh}=createShapeGeometry(cut,shape);
+    assert.ok(planes.length/4<=64);assert.ok(triangles.length/9<=128);
+    assert.equal(mesh,shape==='heart');
+    let volume=0;const edges=new Map();
+    const key=v=>v.map(n=>n.toFixed(5)).join(',');
+    for(let i=0;i<triangles.length;i+=9){
+      const a=[...triangles.slice(i,i+3)],b=[...triangles.slice(i+3,i+6)],c=[...triangles.slice(i+6,i+9)];
+      volume+=(a[0]*(b[1]*c[2]-b[2]*c[1])+a[1]*(b[2]*c[0]-b[0]*c[2])+a[2]*(b[0]*c[1]-b[1]*c[0]))/6;
+      for(const [v,w] of [[a,b],[b,c],[c,a]]){const k=[key(v),key(w)].sort().join('|');edges.set(k,(edges.get(k)||0)+1);}
+      if(!mesh)for(const v of [a,b,c])for(let p=0;p<planes.length;p+=4)assert.ok(v[0]*planes[p]+v[1]*planes[p+1]+v[2]*planes[p+2]<=planes[p+3]+1e-5,`${shape}/${cut} vertex outside plane`);
+    }
+    assert.ok(volume>0,`${shape}/${cut} orientation`);
+    assert.ok([...edges.values()].every(n=>n===2),`${shape}/${cut} must be watertight`);
+  }
+});
+
+test('shape recipes preserve material changes and old recipes default to round',()=>{
+  assert.equal(validateConfig({version:1,color:'#123456'}).shape,'round');
+  const config=validateConfig({...DEFAULT_CONFIG,shape:'heart'});
+  assert.equal(presetConfig('emerald',config).shape,'heart');
+  assert.deepEqual(validateConfig(JSON.parse(JSON.stringify(config))),config);
 });
 
 test('unknown properties are discarded and caller objects remain unchanged', () => {

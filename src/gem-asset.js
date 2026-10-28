@@ -1,5 +1,6 @@
-import { DEFAULT_CONFIG, validateConfig, createCut, presetConfig } from './gem-config.js';
+import { DEFAULT_CONFIG, validateConfig, presetConfig } from './gem-config.js';
 import { vertexShader, fragmentShader } from './gem-shader.js';
+import { createShapeGeometry } from './gem-shapes.js';
 
 const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
 
@@ -42,10 +43,12 @@ export class GemAsset {
     gl.deleteShader(vs); gl.deleteShader(fs);
     if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(this.program));
     this.uniforms = new Map();
-    const names = ['Resolution', 'PlaneCount', 'Bounces', 'Seed', 'Time', 'Yaw', 'Tilt', 'Ior', 'Dispersion', 'Absorption', 'Exposure', 'Color', 'Background', 'Outlines', 'Caustics', 'Transparent'];
+    const names = ['Resolution', 'PlaneCount', 'Bounces', 'Seed', 'Time', 'Yaw', 'Tilt', 'Ior', 'Dispersion', 'Absorption', 'Exposure', 'Color', 'Background', 'Outlines', 'Caustics', 'Transparent', 'Mesh', 'TriangleCount', 'TriangleTexture'];
     for (const name of names) this.uniforms.set(name, gl.getUniformLocation(this.program, `u${name}`));
     this.uniforms.set('Planes', gl.getUniformLocation(this.program, 'uPlanes[0]'));
     this.vao = gl.createVertexArray();
+    this.triangleTexture = gl.createTexture();
+    this.geometryKey = null;
   }
 
   setConfig(patch) {
@@ -83,7 +86,20 @@ export class GemAsset {
     const f = (key, value) => gl.uniform1f(this.uniforms.get(key), value);
     const i = (key, value) => gl.uniform1i(this.uniforms.get(key), value);
     gl.uniform2f(this.uniforms.get('Resolution'), width, height);
-    const planes = createCut(c.cut);
+    const key = `${c.cut}:${c.shape}`;
+    if (key !== this.geometryKey) {
+      this.geometry = createShapeGeometry(c.cut,c.shape); this.geometryKey = key;
+      const triangles = this.geometry.triangles;
+      const data = new Float32Array(Math.max(3,triangles.length/3)*4);
+      for(let n=0;n<triangles.length/3;n++) data.set(triangles.subarray(n*3,n*3+3),n*4);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,this.triangleTexture);
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,3,Math.max(1,triangles.length/9),0,gl.RGBA,gl.FLOAT,data);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    }
+    const { planes,triangles,mesh }=this.geometry;
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,this.triangleTexture);
+    i('TriangleTexture',0); i('TriangleCount',triangles.length/9); i('Mesh',Number(mesh));
     gl.uniform4fv(this.uniforms.get('Planes'), planes);
     i('PlaneCount', planes.length / 4); i('Bounces', c.bounces); i('Seed', c.seed);
     f('Time', time); f('Yaw', yaw); f('Tilt', c.tilt); f('Ior', c.ior);
@@ -124,7 +140,7 @@ export class GemAsset {
     this.disposed = true; cancelAnimationFrame(this.raf); this.observer.disconnect();
     this.canvas.removeEventListener('webglcontextlost', this.onLost);
     this.canvas.removeEventListener('webglcontextrestored', this.onRestored);
-    this.gl.deleteProgram(this.program); this.gl.deleteVertexArray(this.vao);
+    this.gl.deleteProgram(this.program); this.gl.deleteVertexArray(this.vao); this.gl.deleteTexture(this.triangleTexture);
   }
 }
 

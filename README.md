@@ -25,13 +25,19 @@ npm run dev
 
 打开终端显示的开发服务地址。工作室提供红宝石、祖母绿、蓝宝石、紫水晶、钻石预设，以及切工、颜色、折射率、色散、吸收深度、反射次数、像素精度、旋转速度、光照和描边控制。拖动旋转；空格暂停（输入框及按钮获得焦点时保持原生键盘行为）。遵循系统减少动态效果偏好。
 
+### 七种不同轮廓
+
+“形状实例”可选择 **圆形、椭圆形、长方形、梨形、马眼形、心形、晶柱形**；右侧也有形状下拉框。形状与矿物颜色、折射率等材质参数独立，切换矿物会保留当前形状。点击“正面看轮廓”暂停旋转并归正视角，方便比较外形；继续播放可查看厚度与背面。
+
+形状可以通过 URL 直接分享，例如 `?shape=heart`、`?shape=pear`、`?shape=rectangle`。参数 JSON 和序列帧信息包含 `shape`；旧版配方未指定时默认圆形。圆形的几何轴向已改为正面朝向镜头，避免从切工侧面看起来过扁。普通轮廓通过凸多面体求交；心形包含真实凹口，使用闭合三角网格逐面求交，渲染开销略高。形状图标表示轮廓，实际材质在主视窗实时渲染。
+
 ### 可复用资产
 
 - **参数配方**：导出 / 导入版本化 JSON；不合法的参数会被拒绝。
 - **透明 PNG**：导出当前视角，使用最近邻放大 4 倍，保留像素边缘。
 - **序列帧图集**：24 帧、6 列 × 4 行的透明 PNG，附帧尺寸、12 FPS 建议播放速率及参数 JSON。固定倾角与焦散相位，仅围绕竖直轴旋转一圈以形成循环；不会捕捉鼠标交互轨迹。浏览器可能询问是否允许一次下载多个文件。
 - **Web Component**：开发时查看 `/examples/embed.html`，亦随生产构建输出。`<pixel-gem>` 不依赖 UI 框架；移除元素时释放动画和 GPU 资源。
-- **独立 ES 模块**：`npm run build` 输出完整站点到 `dist/`，另输出约 15 KB 未压缩的 `dist/asset/gem-lab.js`。复制该模块到其他 Web 项目即可使用，运行时无外部贴图、模型、字体或第三方网络请求。
+- **独立 ES 模块**：`npm run build` 输出完整站点到 `dist/`，另输出独立的 `dist/asset/gem-lab.js`。复制该模块到其他 Web 项目即可使用，运行时无外部贴图、模型、字体或第三方网络请求。
 
 ```html
 <div style="width:400px;height:400px">
@@ -41,7 +47,7 @@ npm run dev
   import { presetConfig } from './gem-lab.js';
   const gem = document.querySelector('#gem');
   gem.addEventListener('gem-ready', () => {
-    gem.config = { ...presetConfig('sapphire'), pixels: 192, speed: 0.3 };
+    gem.config = { ...presetConfig('sapphire'), shape: 'pear', pixels: 192, speed: 0.3 };
   });
 </script>
 ```

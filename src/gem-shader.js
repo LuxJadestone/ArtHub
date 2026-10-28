@@ -11,6 +11,9 @@ precision highp float;
 out vec4 fragColor;
 uniform vec2 uResolution;
 uniform vec4 uPlanes[64];
+uniform sampler2D uTriangleTexture;
+uniform int uTriangleCount;
+uniform bool uMesh;
 uniform int uPlaneCount, uBounces, uSeed;
 uniform float uTime, uYaw, uTilt, uIor, uDispersion, uAbsorption, uExposure;
 uniform vec3 uColor, uBackground;
@@ -21,7 +24,28 @@ mat3 rotation(float yaw, float tilt){
  return mat3(a,0.,-b, 0.,1.,0., b,0.,a)*mat3(1.,0.,0., 0.,c,d, 0.,-d,c);
 }
 
+bool intersectMesh(vec3 ro,vec3 rd,out float nearT,out float farT,out vec3 nearN,out vec3 farN){
+ float closest=1e6;vec3 normal=vec3(0.);
+ for(int i=0;i<128;i++){
+  if(i>=uTriangleCount)break;
+  vec3 a=texelFetch(uTriangleTexture,ivec2(0,i),0).xyz;
+  vec3 b=texelFetch(uTriangleTexture,ivec2(1,i),0).xyz;
+  vec3 c=texelFetch(uTriangleTexture,ivec2(2,i),0).xyz;
+  vec3 e1=b-a,e2=c-a,h=cross(rd,e2);
+  float determinant=dot(e1,h);if(abs(determinant)<.000001)continue;
+  float inv=1./determinant;vec3 s=ro-a;
+  float u=dot(s,h)*inv;if(u<0.||u>1.)continue;
+  vec3 q=cross(s,e1);float v=dot(rd,q)*inv;if(v<0.||u+v>1.)continue;
+  float t=dot(e2,q)*inv;
+  if(t>.0001&&t<closest){closest=t;normal=normalize(cross(e1,e2));}
+ }
+ farT=closest;farN=normal;nearN=normal;
+ nearT=dot(rd,normal)<0.?closest:-.001;
+ return closest<1e5;
+}
+
 bool intersectGem(vec3 ro,vec3 rd,out float nearT,out float farT,out vec3 nearN,out vec3 farN){
+ if(uMesh)return intersectMesh(ro,rd,nearT,farT,nearN,farN);
  nearT=-1e6;farT=1e6;nearN=vec3(0.);farN=vec3(0.);
  for(int i=0;i<64;i++){
   if(i>=uPlaneCount)break;
@@ -79,7 +103,7 @@ vec3 shade(vec3 ro,vec3 rd,mat3 world,float nearT,vec3 normal){
  color=color*(1.-f)+environment(world*reflect(rd,normal))*f;
  color+=uColor*.045;
  // Small facet boundary highlights, not an overlay texture.
- if(uOutlines){
+ if(uOutlines&&!uMesh){
   float edge=1.;
   for(int i=0;i<64;i++){
    if(i>=uPlaneCount)break;

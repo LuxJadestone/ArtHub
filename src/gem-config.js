@@ -6,8 +6,19 @@ export const PRESETS = Object.freeze({
   diamond: { name: '钻石', english: 'Diamond', formula: 'C', color: '#dce9ef', ior: 2.42, dispersion: 0.075, cut: 'brilliant' },
 });
 
+export const SHAPES = Object.freeze({
+  round: { name: '圆形', english: 'Round', path: 'M16 3A13 13 0 1 1 15.99 3Z' },
+  oval: { name: '椭圆形', english: 'Oval', path: 'M16 2C30 2 30 30 16 30C2 30 2 2 16 2Z' },
+  rectangle: { name: '长方形', english: 'Rectangle', path: 'M9 2H23L27 6V26L23 30H9L5 26V6Z' },
+  pear: { name: '梨形', english: 'Pear', path: 'M16 2C13 9 5 16 5 22A11 9 0 0 0 27 22C27 16 19 9 16 2Z' },
+  marquise: { name: '马眼形', english: 'Marquise', path: 'M16 1Q-3 16 16 31Q35 16 16 1Z' },
+  heart: { name: '心形', english: 'Heart', path: 'M16 9C7-5-6 8 5 19L16 30L27 19C38 8 25-5 16 9Z' },
+  crystal: { name: '晶柱形', english: 'Crystal', path: 'M16 1L25 8V24L16 31L7 24V8Z' },
+});
+
 export const DEFAULT_CONFIG = Object.freeze({
   version: 1, preset: 'ruby', color: PRESETS.ruby.color, cut: 'brilliant',
+  shape: 'round',
   ior: 1.77, dispersion: 0.035, absorption: 1.15, bounces: 6,
   pixels: 240, speed: 0.45, exposure: 1.25, tilt: 0.32,
   outlines: true, caustics: true, background: '#dedbd5', seed: 7,
@@ -33,6 +44,8 @@ export function validateConfig(input) {
       if (['bounces', 'pixels', 'seed'].includes(key) && !Number.isInteger(value)) throw new Error(`${key} 必须为整数`);
     } else if (['color', 'background'].includes(key)) {
       if (typeof value !== 'string' || !/^#[\da-f]{6}$/i.test(value)) throw new Error(`${key} 必须是六位 HEX 颜色`);
+    } else if (key === 'shape') {
+      if (!Object.hasOwn(SHAPES, value)) throw new Error('未知形状');
     } else if (key === 'cut') {
       if (!['brilliant', 'emerald', 'cushion'].includes(value)) throw new Error('未知切工');
     } else if (key === 'preset') {
