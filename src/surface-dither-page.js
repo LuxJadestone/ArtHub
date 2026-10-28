@@ -6,6 +6,7 @@ let defaults=new URLSearchParams(location.search).get('preset')==='reference'?DI
 let resolution=defaults===DITHER_DEFAULTS?'native':'720';
 const previewSize=()=>defaults===DITHER_DEFAULTS?[960,540]:[720,480];
 const controls=[
+  ['paper','亮部上限',.4,1,.02],['background','背景灰度',.2,1,.02],
   ['scale','点阵尺度',3,9,.1],['variability','点径变化',0,1,.05],['contrast','点阵对比度',.25,3,.05],['stretch','拉伸补偿',0,2,.1],
   ['distance','相机距离',3,14,.1],['fov','视场角',35,80,1],['exposure','曝光',.3,1.8,.05],['offset','亮度偏移',-.3,.3,.01],
 ];

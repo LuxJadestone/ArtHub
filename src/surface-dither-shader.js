@@ -12,7 +12,7 @@ precision highp sampler3D;
 out vec4 outputColor;
 uniform vec2 uResolution,uJitter;
 uniform float uSampleScale,uOutputWeight;
-uniform float uYaw,uPitch,uDistance,uObjectAngle,uExposure,uOffset,uFov;
+uniform float uYaw,uPitch,uDistance,uObjectAngle,uExposure,uOffset,uFov,uPaper,uBackground;
 uniform int uMode,uScene;
 uniform bool uRadial;
 ${ditherCore}
@@ -108,7 +108,7 @@ void main(){
  dx=dot(dx,dx)<dot(dxAlt,dxAlt)?dx:dxAlt;dy=dot(dy,dy)<dot(dyAlt,dyAlt)?dy:dyAlt;
  float compensation=uRadial?1.+dot(screen*uFov,screen*uFov):1.;
  dx*=compensation/uSampleScale;dy*=compensation/uSampleScale;
- if(!hit){outputColor=uScene==2?vec4(.94,.93,.88,1.)*uOutputWeight:vec4(uOutputWeight);return;}
+ if(!hit){outputColor=uScene==2?vec4(vec3(.94,.93,.88)*(uBackground/.94),1.)*uOutputWeight:vec4(vec3(uBackground),1.)*uOutputWeight;return;}
  vec3 light=normalize(uScene==0?vec3(.55,.9,-.5):vec3(-.65,.92,.55));
  float brightness=uScene==0?.21+.69*max(0.,dot(normal,light)):.15+.78*max(0.,dot(normal,light));
  vec3 sp,sn;vec2 st;float sm;
@@ -125,7 +125,7 @@ void main(){
  if(uMode==1){float inputValue=uInverse?1.-brightness:brightness;bw=step(bayer((gl_FragCoord.xy+uJitter)*uSampleScale/max(1.,exp2(uScale-6.))),inputValue);if(uInverse)bw=1.-bw;}
  else if(uMode==2){float p=texture(uPattern,vec3(uv*exp2(8.-uScale),15.5/16.)).r;float inputValue=uInverse?1.-brightness:brightness;bw=smoothstep(1.-inputValue-.035,1.-inputValue+.035,p);if(uInverse)bw=1.-bw;}
  else bw=surfaceStableDither(uv,dx,dy,brightness);
- vec3 color=uScene==2?mix(vec3(.10,.115,.12),vec3(.96,.95,.89),bw):vec3(mix(.13,1.,bw));
+ vec3 color=uScene==2?mix(vec3(.10,.115,.12),vec3(.96,.95,.89)*(uPaper/.96),bw):vec3(mix(.13,uPaper,bw));
  outputColor=vec4(color,1.)*uOutputWeight;
 }
 `;

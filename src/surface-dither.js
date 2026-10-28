@@ -3,7 +3,7 @@ import rampURL from './assets/dither3d/ramp.bin?url';
 import {ditherVertex,ditherFragment} from './surface-dither-shader.js';
 import {resolutionAdjustedScale} from './vendor/dither-math.js';
 
-export const DITHER_DEFAULTS=Object.freeze({mode:0,scene:0,scale:5.9,referenceHeight:1080,fov:60,variability:0,contrast:1,stretch:1,exposure:1,offset:0,distance:4.2,yaw:.42,pitch:.436332,quantize:false,inverse:false,radial:false,samples:2,animation:'off'});
+export const DITHER_DEFAULTS=Object.freeze({mode:0,scene:0,scale:5.9,referenceHeight:1080,fov:60,variability:0,contrast:1,stretch:1,exposure:1,offset:0,paper:.78,background:.66,distance:4.2,yaw:.42,pitch:.436332,quantize:false,inverse:false,radial:false,samples:2,animation:'off'});
 export const LEGACY_DEFAULTS=Object.freeze({...DITHER_DEFAULTS,scene:2,scale:6.2,referenceHeight:480,fov:45,distance:7.5,pitch:.32,radial:true,samples:1,animation:'camera'});
 
 async function textureBytes(url,length){
@@ -41,7 +41,7 @@ void main(){
     this.resolveUniform=gl.getUniformLocation(this.resolveProgram,'uSceneColor');
     this.sceneFramebuffer=gl.createFramebuffer();this.sceneColor=gl.createTexture();this.sceneSize=[0,0];
     this.vao=gl.createVertexArray();
-    this.uniforms={};for(const name of ['Resolution','Jitter','SampleScale','OutputWeight','Mode','Scene','Scale','Fov','Variability','Contrast','Stretch','Exposure','Offset','Distance','Yaw','Pitch','ObjectAngle','Quantize','Inverse','Radial','Pattern','Ramp'])this.uniforms[name]=gl.getUniformLocation(this.program,'u'+name);
+    this.uniforms={};for(const name of ['Resolution','Jitter','SampleScale','OutputWeight','Mode','Scene','Scale','Fov','Variability','Contrast','Stretch','Paper','Background','Exposure','Offset','Distance','Yaw','Pitch','ObjectAngle','Quantize','Inverse','Radial','Pattern','Ramp'])this.uniforms[name]=gl.getUniformLocation(this.program,'u'+name);
     const bytes=pattern,size=64,layers=16;
     this.patternData=bytes;this.patternSize=size;this.patternLayers=layers;
     gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
@@ -83,7 +83,7 @@ void main(){
     gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,this.rampTexture);gl.uniform1i(u.Ramp,1);
     gl.uniform2f(u.Resolution,width,height);
     gl.uniform2f(u.Jitter,0,0);gl.uniform1f(u.SampleScale,accumulate?2:1);gl.uniform1f(u.OutputWeight,accumulate?.25:1);
-    for(const [uniform,key]of [['Variability','variability'],['Contrast','contrast'],['Stretch','stretch'],['Exposure','exposure'],['Offset','offset'],['Distance','distance'],['Pitch','pitch']])gl.uniform1f(u[uniform],c[key]);
+    for(const [uniform,key]of [['Paper','paper'],['Background','background'],['Variability','variability'],['Contrast','contrast'],['Stretch','stretch'],['Exposure','exposure'],['Offset','offset'],['Distance','distance'],['Pitch','pitch']])gl.uniform1f(u[uniform],c[key]);
     gl.uniform1f(u.Scale,resolutionAdjustedScale(c.scale,canvas.height*samples,c.referenceHeight));
     gl.uniform1f(u.Fov,2*Math.tan(c.fov*Math.PI/360));
     gl.uniform1f(u.Yaw,c.yaw+(c.animation==='camera'?this.time*.16:0));
