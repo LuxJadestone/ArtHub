@@ -1,0 +1,17 @@
+{
+  "name": "arthub-gem-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build && vite build --config vite.asset.config.js",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "node --test tests/gem-config.test.js",
+    "test:web": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "vite": "7.1.12"
+  }
+}

@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ArtHub — 独立资产嵌入示例</title>
+<style>
+body{margin:0;background:#171b1a;color:#e7ecde;font:16px/1.8 system-ui;padding:36px}main{max-width:880px;margin:auto}h1{font-weight:400}p{color:#a6b29e}pixel-gem{width:100%;height:400px;border-radius:8px;overflow:hidden}button{background:#d4f49a;color:#25301e;border:0;padding:12px 18px;border-radius:4px;cursor:pointer}code{color:#d4f49a}a{color:inherit}
+</style>
+<main><a href="../">← 返回工作室</a><h1>一颗可以带走的宝石</h1><p>独立 Web Component，无需框架和外部贴图。点击按钮或用 JavaScript 更新参数。</p><pixel-gem preset="emerald" id="asset"></pixel-gem><p><button id="change">切换宝石</button></p><p>标签：<code>&lt;pixel-gem preset="emerald"&gt;&lt;/pixel-gem&gt;</code></p><p>参数：<code>element.config = { ...element.config, color: '#4569f5' }</code></p></main>
+<script type="module">
+import '../src/gem-asset.js';
+const names = ['emerald','sapphire','amethyst','diamond','ruby'];let index = 0;
+document.querySelector('#change').addEventListener('click',()=>document.querySelector('#asset').setAttribute('preset',names[++index%names.length]));
+</script>
+</html>
