@@ -4,46 +4,45 @@ import { PRESETS, SHAPES, DEFAULT_CONFIG, presetConfig, validateConfig } from '.
 
 const icon = `<svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M8 4h16l6 10-14 15L2 14 8 4Z M2 14h28M8 4l8 25L24 4M8 4l8 10 8-10" stroke="currentColor" stroke-width="1.2"/></svg>`;
 document.querySelector('#app').innerHTML = `
-<header class="topbar"><a class="brand" href="./">${icon}<span>ArtHub<span class="brand-slash"> / </span><strong>GEM LAB</strong></span></a><span class="top-note">程序化图形实验室 <span class="small-dot"></span> 实验 001</span><a class="source-link" href="https://www.bilibili.com/video/BV18YxK6NEPy" target="_blank" rel="noreferrer">灵感来源 <span>↗</span></a></header>
+<header class="topbar"><a class="brand" href="../">${icon}<span>ArtHub<span class="brand-slash"> / </span><strong>技术目录</strong></span></a><span class="top-note">3D 渲染 <span class="small-dot"></span> 01</span><a class="source-link" href="https://www.bilibili.com/video/BV18YxK6NEPy" target="_blank" rel="noreferrer">参考 <span>↗</span></a></header>
 <main>
- <section class="intro"><div><p class="eyebrow"><span></span> LIGHT, CUT INTO PIXELS.</p><h1>把光，藏进一颗宝石。</h1><p class="intro-copy">转动切面，改变色彩。让每一颗像素，都折射出新的可能。</p></div><div class="edition"><span>INTERACTIVE MATERIAL STUDY</span><strong>01 <i>/ ∞</i></strong></div></section>
+ <section class="intro"><div><p class="eyebrow">3D / PIXEL</p><h1>像素宝石</h1></div><div class="edition"><span>WEBGL 2</span><strong>01</strong></div></section>
  <section class="workspace" aria-label="宝石工作室">
   <div class="stage-column">
    <div class="stage" id="stage">
-    <div class="stage-header"><span class="stage-pill"><i></i> 实时光学实验</span><span class="stage-code" id="material-code">CORUNDUM / 001</span></div>
+    <div class="stage-header"><span class="stage-pill"><i></i> 预览</span><span class="stage-code" id="material-code">ROUND / 192 PX</span></div>
     <pixel-gem preset="ruby" id="gem"></pixel-gem>
-    <div class="gem-label"><span id="gem-formula">Al₂O₃ : Cr</span><h2 id="gem-name">Ruby<span>红宝石</span></h2><p id="gem-caption">光的每一次折返，都是新的切面。</p></div>
+    <div class="gem-label"><span id="gem-formula">Al₂O₃ : Cr</span><h2 id="gem-name">Ruby<span>红宝石</span></h2><p id="gem-caption">圆形</p></div>
     <div class="stage-bottom"><span class="drag-hint">↔ 拖动旋转 · 空格暂停</span><div><button id="reset-view" class="stage-button" aria-label="重置视角" title="重置视角">↺</button><button id="play" class="stage-button" aria-label="暂停动画" title="暂停动画">Ⅱ</button></div></div>
     <div id="render-error" class="render-error" role="alert" hidden></div>
    </div>
-   <div class="collection shape-collection"><div class="section-heading"><h2>形状实例 <span class="new-tag">NEW / 7</span></h2><button id="shape-front" class="text-button">正面看轮廓 ↗</button></div><div class="shapes" role="group" aria-label="宝石形状">${Object.entries(SHAPES).map(([id,s])=>`<button class="shape-card ${id==='round'?'active':''}" data-shape="${id}" aria-pressed="${id==='round'}"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="${s.path}" stroke="currentColor" stroke-width="1.2"/></svg><span>${s.name}<small>${s.english}</small></span></button>`).join('')}</div><p class="shape-note" id="shape-note">轮廓与材质独立：选择一种形状，再试试不同矿物。</p></div>
-   <div class="collection"><div class="section-heading"><h2>矿物收藏</h2><span>选择一种光的性格</span></div><div class="presets" role="group" aria-label="宝石预设">${Object.entries(PRESETS).map(([id, p], index) => `<button class="preset ${id === 'ruby' ? 'active' : ''}" data-preset="${id}" aria-pressed="${id === 'ruby'}"><span class="gem-swatch" style="--gem:${p.color}">${icon}</span><span class="preset-name">${p.name}<small>${p.english}</small></span><span class="preset-index">0${index + 1}</span></button>`).join('')}</div></div>
+   <div class="collection shape-collection"><div class="section-heading"><h2>形状 <span class="new-tag">07</span></h2><button id="shape-front" class="text-button">正面视角 ↗</button></div><div class="shapes" role="group" aria-label="宝石形状">${Object.entries(SHAPES).map(([id,s])=>`<button class="shape-card ${id==='round'?'active':''}" data-shape="${id}" aria-pressed="${id==='round'}"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="${s.path}" stroke="currentColor" stroke-width="1.2"/></svg><span>${s.name}<small>${s.english}</small></span></button>`).join('')}</div></div>
+   <div class="collection"><div class="section-heading"><h2>材质</h2><span>05</span></div><div class="presets" role="group" aria-label="宝石预设">${Object.entries(PRESETS).map(([id, p], index) => `<button class="preset ${id === 'ruby' ? 'active' : ''}" data-preset="${id}" aria-pressed="${id === 'ruby'}"><span class="gem-swatch" style="--gem:${p.color}">${icon}</span><span class="preset-name">${p.name}<small>${p.english}</small></span><span class="preset-index">0${index + 1}</span></button>`).join('')}</div></div>
   </div>
   <aside class="inspector" aria-label="资产参数">
-   <div class="inspector-heading"><div><p class="eyebrow">THE MATERIAL</p><h2>雕琢你的光</h2></div><button id="reset" class="text-button">重置参数 ↺</button></div>
-   <div class="craft-controls"><div class="craft-heading"><span>切面性格</span><button id="new-gem" class="text-button">换一颗 ↻</button></div><div class="craft-choices" role="group" aria-label="切面性格"><button data-craft="0.75" aria-pressed="true">手绘感<small>错落切面 · 柔和彩光</small></button><button data-craft="0" aria-pressed="false">规整感<small>对称切工 · 清晰线条</small></button></div><p>每一颗的切面，都有自己的节奏。</p></div>
+   <div class="inspector-heading"><div><p class="eyebrow">PARAMETERS</p><h2>参数</h2></div><button id="reset" class="text-button">重置 ↺</button></div>
+   <div class="craft-controls"><div class="craft-heading"><span>切面模式</span><button id="new-gem" class="text-button">变体 ↻</button></div><div class="craft-choices" role="group" aria-label="切面模式"><button data-craft="0.75" aria-pressed="true">非对称<small>0.75</small></button><button data-craft="0" aria-pressed="false">对称<small>0.00</small></button></div><p id="seed-value">Seed 7</p></div>
    <fieldset><legend><span>01</span> 形态与颜色</legend><label class="select-label" for="shape">形状 <select id="shape" data-param="shape">${Object.entries(SHAPES).map(([id,s])=>`<option value="${id}">${s.name} · ${s.english}</option>`).join('')}</select></label><label class="select-label cut-label" for="cut">切工 <select id="cut" data-param="cut"><option value="brilliant">明亮式 · Brilliant</option><option value="emerald">阶梯式 · Emerald</option><option value="cushion">枕形式 · Cushion</option></select></label><label class="color-label" for="color"><span>晶体颜色</span><span class="color-value"><output id="color-value">#EF3158</output><input type="color" id="color" data-param="color" value="#ef3158" aria-label="晶体颜色"></span></label></fieldset>
-   <fieldset><legend><span>02</span> 光在其中</legend>
-    ${slider('ior', '折射率', 1.05, 2.6, 0.01, 1.77, '光线进入晶体时的弯折程度')}
-    ${slider('dispersion', '色散', 0, 0.12, 0.001, 0.035, '不同颜色的光，沿不同方向离开')}
-    ${slider('absorption', '色彩深度', 0, 3, 0.05, 1.15, '越深，晶体内部的颜色越浓郁')}
-    ${slider('bounces', '内部反射', 1, 8, 1, 6, '更多次反射会增加渲染开销')}
+   <fieldset><legend><span>02</span> 光学</legend>
+    ${slider('ior', '折射率', 1.05, 2.6, 0.01, 1.77)}
+    ${slider('dispersion', '色散', 0, 0.12, 0.001, 0.035)}
+    ${slider('absorption', '吸收系数', 0, 3, 0.05, 1.15)}
+    ${slider('bounces', '反射次数', 1, 8, 1, 6)}
    </fieldset>
-   <fieldset><legend><span>03</span> 像素与节奏</legend>
-    ${slider('pixels', '像素精度', 96, 480, 16, 192, '较低精度呈现更粗粝的像素边缘')}
-    ${slider('speed', '旋转速度', 0, 1.5, 0.05, 0.45, '拖动画面可额外调整角度')}
-    ${slider('exposure', '光照强度', 0.4, 2.5, 0.05, 1.25, '调整虚拟摄影棚的明亮程度')}
+   <fieldset><legend><span>03</span> 显示</legend>
+    ${slider('pixels', '分辨率', 96, 480, 16, 192)}
+    ${slider('speed', '旋转速度', 0, 1.5, 0.05, 0.45)}
+    ${slider('exposure', '曝光', 0.4, 2.5, 0.05, 1.25)}
     <div class="switch-row"><label for="outlines">切面描边</label><input type="checkbox" role="switch" id="outlines" data-param="outlines" checked></div><div class="switch-row"><label for="caustics">彩色焦散 <small>风格化</small></label><input type="checkbox" role="switch" id="caustics" data-param="caustics" checked></div>
    </fieldset>
-   <div class="asset-box"><div><span class="asset-dot"></span> 不止是一张图片</div><p>保存参数，嵌入网页，或带进你的游戏。<br>这颗宝石，拥有无限种变化。</p><button id="export-png" class="primary-button">导出透明 PNG <span>↗</span></button><div class="export-row"><button id="export-config">↓ 参数 JSON</button><button id="export-sheet">↓ 序列帧图集</button></div><button id="import-config" class="import-button">已有配方？导入参数 ↗</button><input id="import-file" type="file" accept="application/json,.json" hidden></div>
+   <div class="asset-box"><div><span class="asset-dot"></span> 导出</div><button id="export-png" class="primary-button">透明 PNG <span>↗</span></button><div class="export-row"><button id="export-config">↓ 参数 JSON</button><button id="export-sheet">↓ 序列帧图集</button></div><button id="import-config" class="import-button">导入 JSON ↗</button><input id="import-file" type="file" accept="application/json,.json" hidden></div>
   </aside>
  </section>
- <section class="lab-note"><span class="note-symbol">✳</span><p><strong>一颗宝石的诞生</strong> 多面体与网格切工 × 内部反射 × 色散 × 低分辨率像素渲染。没有贴图，每个切面都由光线实时生成。</p><span class="note-tag">WEBGL 2 · PROCEDURAL</span></section>
- <footer><span>ArtHub <span class="muted">/ 计算机图形艺术实验</span></span><span>参考 timbercyke 的 Godot 宝石动画 · 独立 Web 实现</span></footer>
+ <footer><span>ArtHub / 3D 渲染</span><span>参考：timbercyke / Godot</span></footer>
 </main><div class="toast" id="toast" role="status" aria-live="polite"></div>`;
 
-function slider(id, label, min, max, step, value, hint) {
-  return `<div class="slider-control"><label for="${id}">${label}<output id="${id}-value">${value}</output></label><input id="${id}" data-param="${id}" type="range" min="${min}" max="${max}" step="${step}" value="${value}" title="${hint}"></div>`;
+function slider(id, label, min, max, step, value) {
+  return `<div class="slider-control"><label for="${id}">${label}<output id="${id}-value">${value}</output></label><input id="${id}" data-param="${id}" type="range" min="${min}" max="${max}" step="${step}" value="${value}" title="${label}: ${min}–${max}"></div>`;
 }
 
 const gem = document.querySelector('#gem');
@@ -66,8 +65,8 @@ function sync() {
   document.querySelector('#gem-name').replaceChildren(document.createTextNode(preset.english), Object.assign(document.createElement('span'), { textContent: preset.name }));
   document.querySelector('#gem-formula').textContent = preset.formula;
   document.querySelector('#material-code').textContent = `${SHAPES[config.shape].english.toUpperCase()} / ${config.pixels} PX`;
-  document.querySelector('#gem-caption').textContent = `${SHAPES[config.shape].name} · 光的每一次折返，都是新的切面。`;
-  document.querySelector('#shape-note').textContent = config.shape==='heart'?'心形包含凹口，使用三角网格追踪光线；较高精度可能增加渲染开销。':'轮廓与材质独立：选择一种形状，再试试不同矿物。';
+  document.querySelector('#gem-caption').textContent = SHAPES[config.shape].name;
+  document.querySelector('#seed-value').textContent = `Seed ${config.seed}`;
   for(const button of document.querySelectorAll('[data-shape]')) {
     const selected=button.dataset.shape===config.shape;
     button.classList.toggle('active',selected);button.setAttribute('aria-pressed',String(selected));
@@ -116,7 +115,7 @@ document.querySelectorAll('[data-craft]').forEach(button=>button.addEventListene
 document.querySelector('#new-gem').addEventListener('click',()=>{
   if(!gem.asset)return;
   gem.asset.setConfig({craft:gem.config.craft||.75,seed:(gem.config.seed+1)%10000});sync();
-  message('新的切面已生成，导出配方即可留住这一颗');
+  message(`Seed ${gem.config.seed}`);
 });
 document.querySelector('#shape-front').addEventListener('click',()=>{
   if(!gem.asset)return;
@@ -150,7 +149,7 @@ function download(blob, filename) {
 const jsonDownload = (data, filename) => download(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }), filename);
 const assetName = () => `${gem.config.preset}${gem.config.shape==='round'?'':'.'+gem.config.shape}`;
 const pngDownload = (canvas, filename) => canvas.toBlob((blob) => { if (blob) download(blob, filename); else message('图片导出失败'); }, 'image/png');
-document.querySelector('#export-config').addEventListener('click', () => { jsonDownload(gem.config, `${assetName()}.gem.json`); message('配方已保存，随时可以重现这颗宝石'); });
+document.querySelector('#export-config').addEventListener('click', () => { jsonDownload(gem.config, `${assetName()}.gem.json`); message('JSON 已导出'); });
 document.querySelector('#export-png').addEventListener('click', () => {
   if (!gem.asset) return;
   pngDownload(gem.asset.exportPNG(), `${assetName()}.png`); message('已导出透明背景 PNG（4 倍像素缩放）');

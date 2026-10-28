@@ -2,6 +2,17 @@
 
 计算机图形艺术实验仓库：3D 渲染、像素画和程序化视觉效果。
 
+## 技术目录
+
+| 分类 | 技术 | 页面 |
+| --- | --- | --- |
+| 像素渲染 | 像素宝石渲染 | `techniques/gem.html` |
+| 抖动渲染 | 表面稳定分形抖动 | `techniques/surface-dither.html` |
+
+首页：分类筛选、名称搜索、技术入口。旧版 `/?shape=heart` 等链接保留跳转。
+
+表面稳定分形抖动：WebGL 2 / 表面 UV / SVD / 分形层级 / 3D 纹理。比较模式：屏幕 Bayer、固定表面。场景：几何体、平面。参数：点阵尺度、点径变化、对比度、拉伸补偿、距离、曝光、层级量化。源码来源和验证记录见 [surface-stable-dither.md](docs/surface-stable-dither.md)，许可证 MPL-2.0。
+
 ## GEM LAB：实时像素宝石
 
 部署地址（启用 GitHub Pages 后生效）：**https://luxjadestone.github.io/ArtHub/**。推送到 `main` 后，`.github/workflows/pages.yml` 自动运行测试、构建并部署到 GitHub Pages；URL 保持不变。部署进度和错误可在仓库的 Actions 页面查看。

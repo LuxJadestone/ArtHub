@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 async function ready(page) {
-  await page.goto('/');
+  await page.goto('/techniques/gem.html');
   await page.waitForFunction(() => document.querySelector('#gem')?.asset);
   await page.evaluate(() => { const a = document.querySelector('#gem').asset; a.setPlaying(false); a.setConfig({ pixels: 96 }); a.render(); });
 }
@@ -93,7 +93,7 @@ test('standalone component preserves supplied config and disposes when removed',
 
 test('reduced-motion preference starts with a still asset', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/');
+  await page.goto('/techniques/gem.html');
   await page.waitForFunction(() => document.querySelector('#gem')?.asset);
   expect(await page.locator('#gem').evaluate((e) => e.asset.playing)).toBe(false);
   await expect(page.getByRole('button', { name: '播放动画', exact: true })).toBeVisible();
@@ -123,7 +123,7 @@ test('seven shapes have distinct rendered silhouettes, including a genuine heart
 });
 
 test('shape links and heart sprite exports preserve the selected geometry',async({page})=>{
-  await page.goto('/?shape=heart');await page.waitForFunction(()=>document.querySelector('#gem')?.asset);
+  await page.goto('/techniques/gem.html?shape=heart');await page.waitForFunction(()=>document.querySelector('#gem')?.asset);
   await expect(page.locator('[data-shape="heart"]')).toHaveAttribute('aria-pressed','true');
   await page.locator('#shape-front').click();
   const result=await page.locator('#gem').evaluate(e=>{const a=e.asset;a.setConfig({pixels:96,bounces:2});const s=a.exportSpriteSheet({frames:4,columns:2});return{shape:s.metadata.config.shape,alpha:s.canvas.getContext('2d').getImageData(0,0,1,1).data[3],error:a.gl.getError()}});
