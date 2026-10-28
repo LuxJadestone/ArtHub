@@ -11,7 +11,7 @@
 
 uniform highp sampler3D uPattern;
 uniform sampler2D uRamp;
-uniform float uScale,uVariability,uContrast,uStretch,uPixelFootprint;
+uniform float uScale,uVariability,uContrast,uStretch;
 uniform bool uQuantize,uInverse;
 
 // Stable singular values: det / sigmaMax avoids cancellation at grazing angles.
@@ -20,12 +20,6 @@ vec2 surfaceFrequencies(vec2 dx,vec2 dy){
  float discriminant=sqrt(max(0.,Q*Q-4.*R*R));
  float largest=sqrt(max((Q+discriminant)*.5,1e-12));
  return vec2(largest,max(abs(R)/largest,1e-6));
-}
-
-// Filter the final display footprint, including SSAA resolve and CSS reduction.
-// The unresolved periodic signal must tend to its mean, not a sampled beat.
-float patternVisibility(float cyclesPerSample){
- return 1.-smoothstep(.25,.5,cyclesPerSample*uPixelFootprint);
 }
 
 float surfaceStableDither(vec2 coordinates,vec2 dx,vec2 dy,float brightness){
@@ -49,7 +43,5 @@ float surfaceStableDither(vec2 coordinates,vec2 dx,vec2 dy,float brightness){
  float base=mix(.5,brightness,clamp(1.05/(1.+contrast),0.,1.));
  float threshold=1.-brightnessCurve*tweak;
  float result=clamp((pattern-threshold)*contrast+base,0.,1.);
- float cycles=frequency.x*sqrt(layer)/exp2(level);
- result=mix(brightness,result,patternVisibility(cycles));
  return uInverse?1.-result:result;
 }

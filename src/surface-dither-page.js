@@ -27,7 +27,7 @@ function fitCanvas(){
   const width=resolution==='native'?Math.max(1,Math.round(canvas.getBoundingClientRect().width*devicePixelRatio)):Number(resolution);
   const height=Math.max(1,Math.round(width/aspect));
   if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;}
-  if(renderer){renderer.displayScale=Math.max(1,width/Math.max(1,canvas.getBoundingClientRect().width*devicePixelRatio));renderer.render();}
+  renderer?.render();
   document.querySelector('#samples-used').value=renderer?`${renderer.samplesUsed} × ${renderer.samplesUsed}`:'';
   document.querySelector('#preview-resolution').textContent=`${width} × ${height} / DPR ${devicePixelRatio}`;
 }
@@ -37,7 +37,7 @@ document.querySelector('#resolution').addEventListener('change',e=>{resolution=e
 document.querySelector('#samples').addEventListener('change',e=>change({samples:Number(e.target.value)}));
 document.querySelector('#copy-config').addEventListener('click',async()=>{
   if(!renderer)return;
-  const data={config:renderer.config,resolution,canvas:[canvas.width,canvas.height],displayWidth:canvas.getBoundingClientRect().width,dpr:devicePixelRatio,samples:renderer.samplesUsed,browser:navigator.userAgent};
+  const data={config:renderer.config,resolution,canvas:[canvas.width,canvas.height],displayWidth:canvas.getBoundingClientRect().width,dpr:devicePixelRatio,samples:renderer.samplesUsed,samplingPath:renderer.samplingPath,maxTextureSize:renderer.maxTextureSize,browser:navigator.userAgent};
   try{await navigator.clipboard.writeText(JSON.stringify(data,null,2));document.querySelector('#status').value='参数已复制';}
   catch{document.querySelector('#status').value='复制失败';}
 });

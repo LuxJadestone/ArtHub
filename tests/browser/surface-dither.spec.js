@@ -66,7 +66,7 @@ test('camera input and reduced-motion preference work',async({page})=>{
 });
 
 test('missing pattern data reports a visible error instead of a false ready state',async({page})=>{
-  await page.route('**/pattern.png',route=>route.abort());await page.goto('/techniques/surface-dither.html');
+  await page.route('**/pattern.bin',route=>route.abort());await page.goto('/techniques/surface-dither.html');
   await expect(page.locator('#error')).toBeVisible();await expect(page.locator('#export')).toBeDisabled();
 });
 
@@ -126,21 +126,24 @@ test('native pixels track DPR, resize and fullscreen; supersampling resolves to 
   await context.close();
 });
 
-test('unresolved periodic dots converge to mean tone rather than a sampled beat',async({page})=>{
+
+test('texture loading works without Canvas pixel extraction',async({page})=>{
+  await page.addInitScript(()=>{CanvasRenderingContext2D.prototype.getImageData=()=>{throw new Error('pixel extraction unavailable');};});
   await ready(page);
-  const results=await page.locator('#surface-canvas').evaluate(c=>{
-    const r=c.renderer;r.setConfig({mode:0,scene:1,animation:'off',distance:3.2,yaw:0,pitch:0,scale:5,referenceHeight:1080,fov:60,variability:1,contrast:3,stretch:0,exposure:.55,radial:false,samples:1});
-    const measure=displayScale=>{
-      r.displayScale=displayScale;r.render();const pixels=new Uint8Array(200*120*4),gl=r.gl;
-      gl.readPixels(260,180,200,120,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
-      let sum=0,squares=0;for(let i=0;i<pixels.length;i+=4){sum+=pixels[i];squares+=pixels[i]**2;}
-      const mean=sum/(200*120);return {mean,variance:squares/(200*120)-mean**2,error:gl.getError()};
-    };
-    // Tiny display footprint bypasses the low-pass to reproduce the old path.
-    const unfiltered=measure(1e-6),filtered=measure(1);return {unfiltered,filtered};
+  const hash=await page.locator('#surface-canvas').evaluate(async c=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',c.renderer.patternData)),x=>x.toString(16).padStart(2,'0')).join(''));
+  expect(hash).toBe('671715318fdac01cfbf9e353f4418e39c6feee4f42499b8eb8986f3f2a6178ca');
+});
+
+test('2048 texture limit retains 2x2 sampling through accumulation',async({page})=>{
+  await ready(page);
+  const result=await page.locator('#surface-canvas').evaluate(c=>{
+    const r=c.renderer,gl=r.gl;c.width=1530;c.height=861;
+    r.setConfig({scene:1,distance:4,yaw:0,pitch:0,scale:7,referenceHeight:480,fov:45,exposure:.55,radial:false,samples:2});
+    const first=new Uint8Array(96*64*4),second=new Uint8Array(first.length);
+    gl.readPixels(700,400,96,64,gl.RGBA,gl.UNSIGNED_BYTE,first);
+    r.maxTextureSize=2048;r.render();gl.readPixels(700,400,96,64,gl.RGBA,gl.UNSIGNED_BYTE,second);
+    let maximum=0;for(let i=0;i<first.length;i++)maximum=Math.max(maximum,Math.abs(first[i]-second[i]));
+    return {samples:r.samplesUsed,path:r.samplingPath,maximum,error:gl.getError()};
   });
-  expect(results.unfiltered.variance).toBeGreaterThan(5);
-  expect(results.filtered.variance).toBeLessThan(.1);
-  expect(results.filtered.error).toBe(0);
-  expect(results.filtered.mean).toBeGreaterThan(40);expect(results.filtered.mean).toBeLessThan(220);
+  expect(result.samples).toBe(2);expect(result.path).toBe('accumulate');expect(result.error).toBe(0);expect(result.maximum).toBeLessThanOrEqual(3);
 });

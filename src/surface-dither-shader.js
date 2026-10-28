@@ -10,7 +10,8 @@ export const ditherFragment=`#version 300 es
 precision highp float;
 precision highp sampler3D;
 out vec4 outputColor;
-uniform vec2 uResolution;
+uniform vec2 uResolution,uJitter;
+uniform float uSampleScale,uOutputWeight;
 uniform float uYaw,uPitch,uDistance,uObjectAngle,uExposure,uOffset,uFov;
 uniform int uMode,uScene;
 uniform bool uRadial;
@@ -93,7 +94,7 @@ float bayer(vec2 pixel){
 }
 
 void main(){
- vec2 screen=(gl_FragCoord.xy-.5*uResolution)/uResolution.y;
+ vec2 screen=(gl_FragCoord.xy+uJitter-.5*uResolution)/uResolution.y;
  vec3 eye=uDistance*vec3(sin(uYaw)*cos(uPitch),sin(uPitch),cos(uYaw)*cos(uPitch));
  vec3 target=uScene==2?vec3(0.,-.15,0.):vec3(0.);
  vec3 forward=normalize(target-eye),right=normalize(cross(forward,vec3(0.,1.,0.))),up=cross(right,forward);
@@ -106,8 +107,8 @@ void main(){
  vec2 dx=dFdx(uv),dy=dFdy(uv),dxAlt=dFdx(alternate),dyAlt=dFdy(alternate);
  dx=dot(dx,dx)<dot(dxAlt,dxAlt)?dx:dxAlt;dy=dot(dy,dy)<dot(dyAlt,dyAlt)?dy:dyAlt;
  float compensation=uRadial?1.+dot(screen*uFov,screen*uFov):1.;
- dx*=compensation;dy*=compensation;
- if(!hit){outputColor=uScene==2?vec4(.94,.93,.88,1.):vec4(1.);return;}
+ dx*=compensation/uSampleScale;dy*=compensation/uSampleScale;
+ if(!hit){outputColor=uScene==2?vec4(.94,.93,.88,1.)*uOutputWeight:vec4(uOutputWeight);return;}
  vec3 light=normalize(uScene==0?vec3(.55,.9,-.5):vec3(-.65,.92,.55));
  float brightness=uScene==0?.21+.69*max(0.,dot(normal,light)):.15+.78*max(0.,dot(normal,light));
  vec3 sp,sn;vec2 st;float sm;
@@ -121,10 +122,10 @@ void main(){
  }
  brightness=clamp(brightness*uExposure+uOffset,.001,.999);
  float bw;
- if(uMode==1){float inputValue=uInverse?1.-brightness:brightness;bw=step(bayer(gl_FragCoord.xy/max(1.,exp2(uScale-6.))),inputValue);if(uInverse)bw=1.-bw;}
- else if(uMode==2){float p=texture(uPattern,vec3(uv*exp2(8.-uScale),15.5/16.)).r;float inputValue=uInverse?1.-brightness:brightness;bw=smoothstep(1.-inputValue-.035,1.-inputValue+.035,p);if(uInverse)bw=1.-bw;float cycles=surfaceFrequencies(dx,dy).x*exp2(8.-uScale)*4.;bw=mix(brightness,bw,patternVisibility(cycles));}
+ if(uMode==1){float inputValue=uInverse?1.-brightness:brightness;bw=step(bayer((gl_FragCoord.xy+uJitter)*uSampleScale/max(1.,exp2(uScale-6.))),inputValue);if(uInverse)bw=1.-bw;}
+ else if(uMode==2){float p=texture(uPattern,vec3(uv*exp2(8.-uScale),15.5/16.)).r;float inputValue=uInverse?1.-brightness:brightness;bw=smoothstep(1.-inputValue-.035,1.-inputValue+.035,p);if(uInverse)bw=1.-bw;}
  else bw=surfaceStableDither(uv,dx,dy,brightness);
  vec3 color=uScene==2?mix(vec3(.10,.115,.12),vec3(.96,.95,.89),bw):vec3(mix(.13,1.,bw));
- outputColor=vec4(color,1.);
+ outputColor=vec4(color,1.)*uOutputWeight;
 }
 `;

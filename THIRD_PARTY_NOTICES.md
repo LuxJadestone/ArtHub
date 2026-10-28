@@ -18,3 +18,5 @@ Development tools, not bundled into the browser rendering asset:
 - FFmpeg and Chromium are environment-installed executables; their respective build and component licenses apply. Neither executable is redistributed by this repository.
 
 Dependency versions are recorded in `package-lock.json` and `requirements-video.txt`. Preserve dependency license notices if redistributing tooling or dependencies.
+
+The Dither3D raw `pattern.bin` and `ramp.bin` assets are repackaged bytes of the same upstream textures under MPL-2.0. `tools/pack-dither.py` records the extraction and checksums.
