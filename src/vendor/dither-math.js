@@ -8,6 +8,11 @@ export function singularFrequencies(dx,dy){
   return [Math.sqrt(Math.max(1e-12,(q+d)/2)),Math.sqrt(Math.max(1e-12,(q-d)/2))];
 }
 
+// Dither3DGlobalProperties.cs: normalized to the authored reference resolution.
+export function resolutionAdjustedScale(scale,height,referenceHeight=1080){
+  return scale+Math.log2(Math.max(1,height)/referenceHeight);
+}
+
 export function unpackPatternStack(pattern){
   const size=pattern.width,layers=pattern.height/size;
   if(size!==64||layers!==16)throw new Error('点阵纹理尺寸不匹配');

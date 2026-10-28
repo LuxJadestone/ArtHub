@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {singularFrequencies,unpackPatternStack} from '../src/vendor/dither-math.js';
+import {singularFrequencies,unpackPatternStack,resolutionAdjustedScale} from '../src/vendor/dither-math.js';
 
 test('UV singular frequencies are invariant under screen rotation',()=>{
   const first=singularFrequencies([.03,0],[0,.01]);
@@ -13,6 +13,13 @@ test('UV singular frequencies are invariant under screen rotation',()=>{
 test('doubling the surface footprint moves by one power-of-two level',()=>{
   const a=singularFrequencies([.02,0],[0,.02])[1],b=singularFrequencies([.04,0],[0,.04])[1];
   assert.ok(Math.abs(Math.log2(b/a)-1)<1e-9);
+});
+
+test('authored dot scale is normalized to reference render height',()=>{
+  assert.equal(resolutionAdjustedScale(6,1080),6);
+  assert.equal(resolutionAdjustedScale(6,540),5);
+  assert.equal(resolutionAdjustedScale(6,2160),7);
+  assert.equal(resolutionAdjustedScale(7,480,480),7);
 });
 
 test('PNG stack unpacking preserves bottom-up slice and row order',()=>{

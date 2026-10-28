@@ -30,7 +30,7 @@ test('three modes, parameters and texture loading affect actual rendered pixels'
 test('fractal mode holds approximate dot area while fixed surface dots shrink with distance',async({page})=>{
   await ready(page);
   const measure=async(mode,distance)=>page.locator('#surface-canvas').evaluate((c,{mode,distance})=>{
-    const r=c.renderer;r.time=0;r.setConfig({mode,scene:1,animation:'off',distance,yaw:0,pitch:0,exposure:.55,radial:false,scale:7});
+    const r=c.renderer;r.time=0;r.setConfig({mode,scene:1,animation:'off',distance,yaw:0,pitch:0,exposure:.55,radial:false,scale:7,referenceHeight:480,fov:45});
     const w=300,h=200,pixels=new Uint8Array(w*h*4),gl=r.gl;gl.readPixels(210,140,w,h,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
     const seen=new Uint8Array(w*h),sizes=[];
     for(let i=0;i<w*h;i++){
@@ -66,4 +66,28 @@ test('camera input and reduced-motion preference work',async({page})=>{
 test('missing pattern data reports a visible error instead of a false ready state',async({page})=>{
   await page.route('**/pattern.png',route=>route.abort());await page.goto('/techniques/surface-dither.html');
   await expect(page.locator('#error')).toBeVisible();await expect(page.locator('#export')).toBeDisabled();
+});
+
+
+test('reference preset keeps resolution calibration, aspect ratio and reset separate from legacy',async({page})=>{
+  await page.goto('/techniques/surface-dither.html?preset=reference');
+  await page.waitForFunction(()=>document.querySelector('#surface-canvas')?.renderer);
+  const canvas=page.locator('#surface-canvas');
+  await expect(page.locator('#preset')).toHaveValue('reference');
+  await expect(page.locator('#animation')).toHaveValue('off');
+  const calibrated=await canvas.evaluate(c=>{
+    const r=c.renderer;r.render();
+    return {size:[c.width,c.height],scene:r.config.scene,scale:r.gl.getUniform(r.program,r.uniforms.Scale),error:r.gl.getError(),ratio:c.clientWidth/c.clientHeight};
+  });
+  expect(calibrated.size).toEqual([960,540]);expect(calibrated.scene).toBe(0);
+  expect(calibrated.scale).toBeCloseTo(4.9);expect(calibrated.error).toBe(0);
+  expect(calibrated.ratio).toBeCloseTo(16/9,2);
+  expect((await snapshot(page)).dark).toBeGreaterThan(.05);
+  await page.locator('#scale').fill('7');await page.locator('#scale').dispatchEvent('input');
+  await page.locator('#reset').click();await expect(page.locator('#scale')).toHaveValue('5.9');
+  await page.locator('#preset').selectOption('legacy');
+  await expect(page).not.toHaveURL(/preset=reference/);
+  expect(await canvas.evaluate(c=>[c.width,c.height,c.renderer.config.scene,c.renderer.config.scale])).toEqual([720,480,2,6.2]);
+  await page.locator('#preset').selectOption('reference');await expect(page).toHaveURL(/preset=reference/);
+  expect((await snapshot(page)).error).toBe(0);
 });

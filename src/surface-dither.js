@@ -1,9 +1,10 @@
 import patternURL from './assets/dither3d/pattern.png';
 import rampURL from './assets/dither3d/ramp.png';
 import {ditherVertex,ditherFragment} from './surface-dither-shader.js';
-import {unpackPatternStack} from './vendor/dither-math.js';
+import {unpackPatternStack,resolutionAdjustedScale} from './vendor/dither-math.js';
 
-export const DITHER_DEFAULTS=Object.freeze({mode:0,scene:0,scale:6.2,variability:0,contrast:1,stretch:1,exposure:1,offset:0,distance:7.5,yaw:.42,pitch:.32,quantize:false,inverse:false,radial:true,animation:'camera'});
+export const DITHER_DEFAULTS=Object.freeze({mode:0,scene:0,scale:5.9,referenceHeight:1080,fov:60,variability:0,contrast:1,stretch:1,exposure:1,offset:0,distance:4.2,yaw:.42,pitch:.436332,quantize:false,inverse:false,radial:false,animation:'off'});
+export const LEGACY_DEFAULTS=Object.freeze({...DITHER_DEFAULTS,scene:2,scale:6.2,referenceHeight:480,fov:45,distance:7.5,pitch:.32,radial:true,animation:'camera'});
 
 async function imageData(url){
   const response=await fetch(url);if(!response.ok)throw new Error(`纹理 HTTP ${response.status}`);
@@ -14,12 +15,12 @@ async function imageData(url){
 }
 
 export class SurfaceDither {
-  static async create(canvas){
+  static async create(canvas,config=DITHER_DEFAULTS){
     const images=await Promise.all([imageData(patternURL),imageData(rampURL)]);
-    return new SurfaceDither(canvas,...images);
+    return new SurfaceDither(canvas,...images,config);
   }
-  constructor(canvas,pattern,ramp){
-    this.canvas=canvas;this.config={...DITHER_DEFAULTS};this.time=0;this.last=undefined;this.disposed=false;
+  constructor(canvas,pattern,ramp,config=DITHER_DEFAULTS){
+    this.canvas=canvas;this.config={...DITHER_DEFAULTS,...config};this.time=0;this.last=undefined;this.disposed=false;
     const gl=this.gl=canvas.getContext('webgl2',{antialias:false,preserveDrawingBuffer:true});
     if(!gl)throw new Error('WebGL 2 不可用');
     const compile=(type,source)=>{const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(shader));return shader;};
@@ -27,7 +28,7 @@ export class SurfaceDither {
     this.program=gl.createProgram();gl.attachShader(this.program,vs);gl.attachShader(this.program,fs);gl.linkProgram(this.program);gl.deleteShader(vs);gl.deleteShader(fs);
     if(!gl.getProgramParameter(this.program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(this.program));
     this.vao=gl.createVertexArray();
-    this.uniforms={};for(const name of ['Resolution','Mode','Scene','Scale','Variability','Contrast','Stretch','Exposure','Offset','Distance','Yaw','Pitch','ObjectAngle','Quantize','Inverse','Radial','Pattern','Ramp'])this.uniforms[name]=gl.getUniformLocation(this.program,'u'+name);
+    this.uniforms={};for(const name of ['Resolution','Mode','Scene','Scale','Fov','Variability','Contrast','Stretch','Exposure','Offset','Distance','Yaw','Pitch','ObjectAngle','Quantize','Inverse','Radial','Pattern','Ramp'])this.uniforms[name]=gl.getUniformLocation(this.program,'u'+name);
     const {bytes,size,layers}=unpackPatternStack(pattern);
     this.patternData=bytes;this.patternSize=size;this.patternLayers=layers;
     gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
@@ -50,7 +51,9 @@ export class SurfaceDither {
     gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_3D,this.patternTexture);gl.uniform1i(u.Pattern,0);
     gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,this.rampTexture);gl.uniform1i(u.Ramp,1);
     gl.uniform2f(u.Resolution,canvas.width,canvas.height);
-    for(const [uniform,key]of [['Scale','scale'],['Variability','variability'],['Contrast','contrast'],['Stretch','stretch'],['Exposure','exposure'],['Offset','offset'],['Distance','distance'],['Pitch','pitch']])gl.uniform1f(u[uniform],c[key]);
+    for(const [uniform,key]of [['Variability','variability'],['Contrast','contrast'],['Stretch','stretch'],['Exposure','exposure'],['Offset','offset'],['Distance','distance'],['Pitch','pitch']])gl.uniform1f(u[uniform],c[key]);
+    gl.uniform1f(u.Scale,resolutionAdjustedScale(c.scale,canvas.height,c.referenceHeight));
+    gl.uniform1f(u.Fov,2*Math.tan(c.fov*Math.PI/360));
     gl.uniform1f(u.Yaw,c.yaw+(c.animation==='camera'?this.time*.16:0));
     gl.uniform1f(u.ObjectAngle,c.animation==='object'?this.time*.28:0);
     gl.uniform1i(u.Mode,c.mode);

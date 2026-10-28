@@ -11,7 +11,7 @@ precision highp float;
 precision highp sampler3D;
 out vec4 outputColor;
 uniform vec2 uResolution;
-uniform float uYaw,uPitch,uDistance,uObjectAngle,uExposure,uOffset;
+uniform float uYaw,uPitch,uDistance,uObjectAngle,uExposure,uOffset,uFov;
 uniform int uMode,uScene;
 uniform bool uRadial;
 ${ditherCore}
@@ -35,11 +35,34 @@ bool box(vec3 ro,vec3 rd,vec3 halfSize,out float t,out vec3 normal){
  return true;
 }
 
+// Reconstruction of the geometric introduction, not the later game scene.
+bool referenceScene(vec3 ro,vec3 rd,out vec3 point,out vec3 normal,out vec2 uv,out float material){
+ float nearest=1e6,t;vec3 n;normal=vec3(0.,1.,0.);uv=vec2(0.);material=1.;
+ if(abs(rd.y)>.00001){t=(-1.-ro.y)/rd.y;vec3 floorPoint=ro+rd*t;if(t>.001&&max(abs(floorPoint.x),abs(floorPoint.z))<10.){nearest=t;uv=floorPoint.xz;}}
+ for(int j=0;j<2;j++){
+  vec3 center=j==0?vec3(.75,0.,-.45):vec3(1.,1.25,-.45);
+  float radius=j==0?1.:.28;
+  if(sphere(ro,rd,center,radius,t,n)&&t<nearest){nearest=t;normal=n;material=2.;uv=vec2(atan(n.z,n.x),asin(clamp(n.y,-1.,1.)));}
+ }
+ for(int j=0;j<3;j++){
+  vec3 center=j==0?vec3(-.45,-.35,.65):j==1?vec3(-1.05,-.15,-.55):vec3(-1.05,1.08,-.55);
+  vec3 halfSize=j==0?vec3(1.1,.65,.75):j==1?vec3(.55,.85,.55):vec3(.42,.38,.42);
+  mat3 rotation=rotateY((j==0?-.55:j==2?.20:0.)+uObjectAngle);
+  vec3 localRo=transpose(rotation)*(ro-center),localRd=transpose(rotation)*rd;
+  if(box(localRo,localRd,halfSize,t,n)&&t<nearest){
+   nearest=t;normal=rotation*n;material=3.;vec3 p=localRo+localRd*t;
+   uv=abs(n.x)>.5?p.zy:abs(n.y)>.5?p.xz:p.xy;
+  }
+ }
+ point=ro+rd*nearest;return nearest<1e5;
+}
+
 bool scene(vec3 ro,vec3 rd,out vec3 point,out vec3 normal,out vec2 uv,out float material){
  if(uScene==1){
   float planeT=-ro.z/(abs(rd.z)<.00001?.00001:rd.z);
   point=ro+rd*planeT;normal=vec3(0.,0.,sign(ro.z));uv=point.xy;material=6.;return planeT>.001;
  }
+ if(uScene==0)return referenceScene(ro,rd,point,normal,uv,material);
  float nearest=1e6,t;vec3 n;material=0.;uv=vec2(0.);normal=vec3(0.,1.,0.);
  if(abs(rd.y)>.00001){
   t=(-1.1-ro.y)/rd.y;
@@ -72,9 +95,9 @@ float bayer(vec2 pixel){
 void main(){
  vec2 screen=(gl_FragCoord.xy-.5*uResolution)/uResolution.y;
  vec3 eye=uDistance*vec3(sin(uYaw)*cos(uPitch),sin(uPitch),cos(uYaw)*cos(uPitch));
- vec3 target=uScene==1?vec3(0.):vec3(0.,-.15,0.);
+ vec3 target=uScene==2?vec3(0.,-.15,0.):vec3(0.);
  vec3 forward=normalize(target-eye),right=normalize(cross(forward,vec3(0.,1.,0.))),up=cross(right,forward);
- vec3 direction=normalize(forward+right*screen.x*.828427+up*screen.y*.828427);
+ vec3 direction=normalize(forward+right*screen.x*uFov+up*screen.y*uFov);
  vec3 point,normal;vec2 uv;float material;
  bool hit=scene(eye,direction,point,normal,uv,material);
  // Alternate angular coordinate avoids sphere seam derivatives.
@@ -82,14 +105,14 @@ void main(){
  if(material==2.)alternate.x=uv.x<0.?uv.x+6.283185:uv.x;
  vec2 dx=dFdx(uv),dy=dFdy(uv),dxAlt=dFdx(alternate),dyAlt=dFdy(alternate);
  dx=dot(dx,dx)<dot(dxAlt,dxAlt)?dx:dxAlt;dy=dot(dy,dy)<dot(dyAlt,dyAlt)?dy:dyAlt;
- float compensation=uRadial?1.+dot(screen*.828427,screen*.828427):1.;
+ float compensation=uRadial?1.+dot(screen*uFov,screen*uFov):1.;
  dx*=compensation;dy*=compensation;
- if(!hit){outputColor=vec4(.94,.93,.88,1.);return;}
- vec3 light=normalize(vec3(-.65,.92,.55));
- float brightness=.15+.78*max(0.,dot(normal,light));
+ if(!hit){outputColor=uScene==2?vec4(.94,.93,.88,1.):vec4(1.);return;}
+ vec3 light=normalize(uScene==0?vec3(.55,.9,-.5):vec3(-.65,.92,.55));
+ float brightness=uScene==0?.21+.69*max(0.,dot(normal,light)):.15+.78*max(0.,dot(normal,light));
  vec3 sp,sn;vec2 st;float sm;
  if(scene(point+normal*.005,light,sp,sn,st,sm))brightness*=.35;
- if(material==1.){
+ if(material==1.&&uScene==2){
   float grid=step(.93,fract(uv.x*.7))+step(.93,fract(uv.y*.7));brightness-=min(grid,1.)*.09;
  }
  if(material==4.){
@@ -101,6 +124,7 @@ void main(){
  if(uMode==1){float inputValue=uInverse?1.-brightness:brightness;bw=step(bayer(gl_FragCoord.xy/exp2(uScale-6.)),inputValue);if(uInverse)bw=1.-bw;}
  else if(uMode==2){float p=texture(uPattern,vec3(uv*exp2(8.-uScale),15.5/16.)).r;float inputValue=uInverse?1.-brightness:brightness;bw=smoothstep(1.-inputValue-.035,1.-inputValue+.035,p);if(uInverse)bw=1.-bw;}
  else bw=surfaceStableDither(uv,dx,dy,brightness);
- outputColor=vec4(mix(vec3(.10,.115,.12),vec3(.96,.95,.89),bw),1.);
+ vec3 color=uScene==2?mix(vec3(.10,.115,.12),vec3(.96,.95,.89),bw):vec3(mix(.13,1.,bw));
+ outputColor=vec4(color,1.);
 }
 `;
