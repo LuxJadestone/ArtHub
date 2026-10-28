@@ -29,8 +29,8 @@ test('three modes, parameters and texture loading affect actual rendered pixels'
 
 test('fractal mode holds approximate dot area while fixed surface dots shrink with distance',async({page})=>{
   await ready(page);
-  const measure=async(mode,distance)=>page.locator('#surface-canvas').evaluate((c,{mode,distance})=>{
-    const r=c.renderer;r.time=0;r.setConfig({mode,scene:1,animation:'off',distance,yaw:0,pitch:0,exposure:.55,radial:false,scale:7,referenceHeight:480,fov:45});
+  const measure=async(mode,distance,samples=1)=>page.locator('#surface-canvas').evaluate((c,{mode,distance,samples})=>{
+    const r=c.renderer;r.time=0;r.setConfig({mode,samples,scene:1,animation:'off',distance,yaw:0,pitch:0,exposure:.55,radial:false,scale:7,referenceHeight:480,fov:45});
     const w=300,h=200,pixels=new Uint8Array(w*h*4),gl=r.gl;gl.readPixels(210,140,w,h,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
     const seen=new Uint8Array(w*h),sizes=[];
     for(let i=0;i<w*h;i++){
@@ -47,11 +47,13 @@ test('fractal mode holds approximate dot area while fixed surface dots shrink wi
       if(!boundary&&count>1&&count<1000)sizes.push(count);
     }
     sizes.sort((a,b)=>a-b);return{median:sizes[Math.floor(sizes.length/2)],count:sizes.length,error:gl.getError()};
-  },{mode,distance});
+  },{mode,distance,samples});
   const near=await measure(0,4),far=await measure(0,10),fixedNear=await measure(2,4),fixedFar=await measure(2,10);
   for(const result of [near,far,fixedNear,fixedFar]){expect(result.count).toBeGreaterThan(20);expect(result.error).toBe(0);}
   expect(far.median/near.median).toBeGreaterThan(.75);expect(far.median/near.median).toBeLessThan(1.3);
   expect(fixedNear.median/fixedFar.median).toBeGreaterThan(3.3);
+  const sampledNear=await measure(0,4,2);
+  expect(sampledNear.median/near.median).toBeGreaterThan(.8);expect(sampledNear.median/near.median).toBeLessThan(1.2);
 });
 
 test('camera input and reduced-motion preference work',async({page})=>{
@@ -77,10 +79,10 @@ test('reference preset keeps resolution calibration, aspect ratio and reset sepa
   await expect(page.locator('#animation')).toHaveValue('off');
   const calibrated=await canvas.evaluate(c=>{
     const r=c.renderer;r.render();
-    return {size:[c.width,c.height],scene:r.config.scene,scale:r.gl.getUniform(r.program,r.uniforms.Scale),error:r.gl.getError(),ratio:c.clientWidth/c.clientHeight};
+    return {size:[c.width,c.height],display:c.getBoundingClientRect().width,dpr:devicePixelRatio,scene:r.config.scene,scale:r.gl.getUniform(r.program,r.uniforms.Scale),error:r.gl.getError(),ratio:c.clientWidth/c.clientHeight};
   });
-  expect(calibrated.size).toEqual([960,540]);expect(calibrated.scene).toBe(0);
-  expect(calibrated.scale).toBeCloseTo(4.9);expect(calibrated.error).toBe(0);
+  expect(calibrated.size[0]).toBe(Math.round(calibrated.display*calibrated.dpr));expect(calibrated.scene).toBe(0);
+  expect(calibrated.scale).toBeCloseTo(5.9+Math.log2(calibrated.size[1]*2/1080));expect(calibrated.error).toBe(0);
   expect(calibrated.ratio).toBeCloseTo(16/9,2);
   expect((await snapshot(page)).dark).toBeGreaterThan(.05);
   await page.locator('#scale').fill('7');await page.locator('#scale').dispatchEvent('input');
@@ -90,4 +92,36 @@ test('reference preset keeps resolution calibration, aspect ratio and reset sepa
   expect(await canvas.evaluate(c=>[c.width,c.height,c.renderer.config.scene,c.renderer.config.scale])).toEqual([720,480,2,6.2]);
   await page.locator('#preset').selectOption('reference');await expect(page).toHaveURL(/preset=reference/);
   expect((await snapshot(page)).error).toBe(0);
+});
+
+
+test('native pixels track DPR, resize and fullscreen; supersampling resolves to the canvas',async({browser})=>{
+  const context=await browser.newContext({viewport:{width:1100,height:900},deviceScaleFactor:2});
+  const page=await context.newPage();await page.goto('/techniques/surface-dither.html?preset=reference');
+  await page.waitForFunction(()=>document.querySelector('#surface-canvas')?.renderer);
+  const canvas=page.locator('#surface-canvas');
+  const inspect=()=>canvas.evaluate(c=>{const r=c.renderer;r.render();return {width:c.width,height:c.height,display:c.getBoundingClientRect().width,dpr:devicePixelRatio,filter:getComputedStyle(c).imageRendering,error:r.gl.getError(),buffer:r.sceneSize};});
+  let state=await inspect();expect(state.width).toBe(Math.round(state.display*2));expect(state.filter).toBe('auto');expect(state.error).toBe(0);
+  expect(state.buffer).toEqual([state.width*2,state.height*2]);
+  await page.setViewportSize({width:900,height:800});
+  await expect.poll(async()=>{const s=await inspect();return s.width===Math.round(s.display*2);}).toBe(true);
+  await page.locator('#resolution').selectOption('960');
+  expect((await inspect()).width).toBe(960);
+  const aa=await snapshot(page);
+  const resolveError=await canvas.evaluate(c=>{
+    const r=c.renderer,gl=r.gl,x=Math.floor(c.width/2),y=Math.floor(c.height/2),pixel=new Uint8Array(4),samples=new Uint8Array(16);
+    gl.readPixels(x,y,1,1,gl.RGBA,gl.UNSIGNED_BYTE,pixel);
+    gl.bindFramebuffer(gl.FRAMEBUFFER,r.sceneFramebuffer);gl.readPixels(x*2,y*2,2,2,gl.RGBA,gl.UNSIGNED_BYTE,samples);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+    return Math.max(...[0,1,2].map(k=>Math.abs(pixel[k]-(samples[k]+samples[4+k]+samples[8+k]+samples[12+k])/4)));
+  });
+  expect(resolveError).toBeLessThanOrEqual(1);
+  await page.locator('#samples').selectOption('1');const single=await snapshot(page);
+  expect(aa.hash).not.toBe(single.hash);expect(single.error).toBe(0);
+  await page.locator('#resolution').selectOption('native');
+  await page.locator('#fullscreen').click();await expect.poll(()=>page.evaluate(()=>!!document.fullscreenElement)).toBe(true);
+  await expect.poll(async()=>{const s=await inspect();return s.width===Math.round(s.display*2);}).toBe(true);
+  expect((await inspect()).error).toBe(0);
+  await expect(page.locator('#fullscreen')).toHaveText('退出全屏');
+  await page.locator('#fullscreen').click();await expect.poll(()=>page.evaluate(()=>!!document.fullscreenElement)).toBe(false);
+  await context.close();
 });
